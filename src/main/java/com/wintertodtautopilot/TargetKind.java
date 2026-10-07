@@ -1,0 +1,6 @@
+package com.wintertodtautopilot;
+
+public enum TargetKind
+{
+    NONE, BRAZIER, ROOTS, PYROMANCER, HERBS, POTION_CRATE, HAMMER_CRATE, KNIFE_CRATE, AXE_CRATE, TINDERBOX_CRATE, DOOR, BREWMA
+}

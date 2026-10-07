@@ -1,0 +1,6 @@
+package com.wintertodtautopilot;
+
+public enum ObjectiveType
+{
+    WAIT, ENTER, POSITION, CHOP, FLETCH, FEED, LIGHT, REPAIR, HEAL_PYROMANCER, MAKE_REJUVENATION, RESTORE_WARMTH, GET_TOOL, ROUND_COMPLETE
+}
