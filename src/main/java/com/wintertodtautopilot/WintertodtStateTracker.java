@@ -42,6 +42,7 @@ public class WintertodtStateTracker
         if (canMixPotion == null) { canMixPotion = Quest.DRUIDIC_RITUAL.getState(client) == QuestState.FINISHED; }
         WintertodtSnapshot.WintertodtSnapshotBuilder b = WintertodtSnapshot.builder().playerLocation(location)
             .workingCorner(corner).localBrazierState(objects.brazier(location))
+            .brazierDistance(objects.brazierDistance(player))
             .canMixPotion(canMixPotion).firemakingLevel(client.getRealSkillLevel(Skill.FIREMAKING));
         inventory.fill(b);
         // Region 6462 includes the safe preparation area INSIDE the Doors of Dinh.
@@ -55,9 +56,10 @@ public class WintertodtStateTracker
             interrupted = false;
             lastActionTick = tick;
         }
-        int warmth = partial.active() ? Math.max(0, Math.min(100, client.getVarbitValue(VarbitID.WINT_WARMTH) / 10)) : -1;
+        int rawWarmth = client.getVarbitValue(VarbitID.WINT_WARMTH);
+        int warmth = rawWarmth >= 0 && rawWarmth <= 1000 && (partial.active() || rawWarmth > 0) ? rawWarmth / 10 : -1;
         NPC pyro = npcs.target(TargetKind.PYROMANCER, corner.location());
-        b.warmth(warmth).localPyromancerKnown(pyro != null)
+        b.warmth(warmth).rawWarmth(rawWarmth).localPyromancerKnown(pyro != null)
             .localPyromancerIncapacitated(pyro != null && WintertodtNpcTracker.id(pyro) == NpcID.WINT_WIZARD_DOWN);
         boolean moving = previous.getPlayerLocation() != null && !location.equals(previous.getPlayerLocation());
         PlayerActivity animation = WintertodtConstants.activity(player.getAnimation());

@@ -18,7 +18,7 @@ public final class WintertodtAttentionTracker
         WintertodtAutopilotConfig config, int tick)
     {
         if (s.getRoundState() == RoundState.OUTSIDE) { reset(); return null; }
-        boolean low = s.active() && s.getWarmth() >= 0
+        boolean low = (s.active() || objective.getType() == ObjectiveType.RESTORE_WARMTH) && s.getWarmth() >= 0
             && s.getWarmth() <= Math.min(config.emergencyWarmth(), config.restoreWarmth())
             && s.getCurrentActivity() != PlayerActivity.RESTORING_WARMTH;
         if (!low) { lowNotified = false; }

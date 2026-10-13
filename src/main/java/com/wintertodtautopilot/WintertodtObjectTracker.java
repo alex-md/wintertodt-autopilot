@@ -96,6 +96,26 @@ public class WintertodtObjectTracker
             default: return BrazierState.UNAVAILABLE;
         }
     }
+    public int brazierDistance(Player player)
+    {
+        TileObject object = target(TargetKind.BRAZIER, player.getWorldLocation());
+        if (object == null || player.getLocalLocation() == null) { return -1; }
+        net.runelite.api.coords.LocalPoint local = object.getLocalLocation();
+        if (local == null) { return -1; }
+        int minX = local.getSceneX(), maxX = minX, minY = local.getSceneY(), maxY = minY;
+        if (object instanceof GameObject)
+        {
+            Point min = ((GameObject) object).getSceneMinLocation();
+            Point max = ((GameObject) object).getSceneMaxLocation();
+            if (min == null || max == null) { return -1; }
+            minX = min.getX(); maxX = max.getX(); minY = min.getY(); maxY = max.getY();
+        }
+        int x = player.getLocalLocation().getSceneX(), y = player.getLocalLocation().getSceneY();
+        // Cardinal distance agrees with the walking path, including diagonal approaches.
+        int dx = Math.max(0, Math.max(minX - x, x - maxX));
+        int dy = Math.max(0, Math.max(minY - y, y - maxY));
+        return Math.max(0, dx + dy - 1);
+    }
     public int litCount()
     {
         Set<WorldPoint> positions = new java.util.HashSet<>();

@@ -128,4 +128,36 @@ public class WintertodtStateTrackerTest
         when(player.getAnimation()).thenReturn(AnimationID.HUMAN_FLETCHING);
         assertFalse(tick(13).isInterrupted());
     }
+    @Test public void warmthReadingSurvivesMissingRoundHudAndInvalidSignalIsUnknown()
+    {
+        round = RoundState.COUNTDOWN;
+        when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(350);
+        WintertodtSnapshot s = tick(10);
+        assertEquals(35, s.getWarmth()); assertEquals(350, s.getRawWarmth());
+        when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(10000);
+        assertEquals(-1, tick(11).getWarmth());
+        when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(0);
+        assertEquals(-1, tick(12).getWarmth());
+        round = RoundState.ACTIVE;
+        assertEquals(0, tick(13).getWarmth());
+    }
+
+    @Test public void observedWarmthAndPotionDriveARealRestoreDecision()
+    {
+        when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(450);
+        doAnswer(invocation -> {
+            WintertodtSnapshot.WintertodtSnapshotBuilder b = invocation.getArgument(0);
+            b.brumaRoots(10).hasAxe(true).rejuvenationDoses(4)
+                .warmthItem(net.runelite.api.gameval.ItemID.WINT_POTION4).potionItem(net.runelite.api.gameval.ItemID.WINT_POTION4);
+            return null;
+        }).when(inventory).fill(any());
+        when(player.getAnimation()).thenReturn(AnimationID.HUMAN_WOODCUTTING_BRONZE_AXE);
+        WintertodtSnapshot s = tick(10);
+        assertEquals(45, s.getWarmth());
+        WintertodtObjective o = new WintertodtDecisionEngine().decide(s, PlannerSettings.from(new WintertodtAutopilotConfig() { }));
+        assertEquals(ObjectiveType.RESTORE_WARMTH, o.getType());
+        assertEquals("Drink rejuvenation potion", o.getInstruction());
+        assertTrue(WintertodtHighlight.needsAttention(s, o));
+    }
+
 }

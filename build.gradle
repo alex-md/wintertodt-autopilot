@@ -27,12 +27,14 @@ tasks.register('run', JavaExec) {
     args '--developer-mode', '--debug'
 }
 
-tasks.named('jar') {
-    from(files('LICENSE', 'THIRD_PARTY_NOTICES')) { into 'META-INF' }
-}
-
 tasks.register('previewOverlay', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'com.wintertodtautopilot.WintertodtOverlayPreview'
+    jvmArgs '-Djava.awt.headless=true'
+}
+
+tasks.register('previewSidebar', JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wintertodtautopilot.WintertodtSidebarPreview'
     jvmArgs '-Djava.awt.headless=true'
 }

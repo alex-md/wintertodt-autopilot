@@ -12,6 +12,8 @@ public final class WintertodtDecisionEngine
     private PlannerSettings previousSettings;
     private boolean suppliesReady;
     private int preparationDoseTarget;
+    private boolean finishing;
+    private boolean finishComplete;
 
     public int getPreparationDoseTarget() { return preparationDoseTarget; }
 
@@ -24,6 +26,8 @@ public final class WintertodtDecisionEngine
         previousSettings = null;
         suppliesReady = false;
         preparationDoseTarget = 0;
+        finishing = false;
+        finishComplete = false;
     }
 
     public WintertodtObjective decide(WintertodtSnapshot s, PlannerSettings settings)
@@ -37,10 +41,32 @@ public final class WintertodtDecisionEngine
         {
             normal = null;
             corner = s.getWorkingCorner();
+            finishing = false;
+            finishComplete = false;
         }
+        if (s.getRoundState() != RoundState.OUTSIDE && s.getRoundState() != RoundState.LOBBY
+            && s.getWarmth() >= 0 && s.getWarmth() <= settings.getRestoreWarmth()
+            && s.getCurrentActivity() != PlayerActivity.RESTORING_WARMTH)
+        {
+            boolean emergency = s.getWarmth() <= settings.getEmergencyWarmth();
+            if (s.getWarmthItem() >= 0)
+            {
+                return new WintertodtObjective(ObjectiveType.RESTORE_WARMTH,
+                    (emergency ? "LOW WARMTH - " : "") + (WintertodtConstants.doses(s.getWarmthItem()) > 0
+                        ? "Drink rejuvenation potion" : "Eat food to restore warmth"),
+                    "warmth_low", TargetKind.NONE, 1, emergency, s.getWarmthItem());
+            }
+            // Never keep skilling or propose a long supply trip without a usable restorative.
+            return new WintertodtObjective(ObjectiveType.RESTORE_WARMTH,
+                "Move to the safe lobby - no warmth supplies", "no_warmth_supplies",
+                TargetKind.DOOR, 0, true);
+        }
+
         if (!s.active())
         {
             normal = null;
+            finishing = false;
+            finishComplete = false;
             if (s.getRoundState() == RoundState.OUTSIDE)
             {
                 return action(ObjectiveType.WAIT, "Waiting for Wintertodt", "outside", TargetKind.NONE);
@@ -62,36 +88,29 @@ public final class WintertodtDecisionEngine
             return action(ObjectiveType.WAIT, "Wait for the round", "countdown", TargetKind.NONE);
         }
 
-        if (s.getWarmth() >= 0 && s.getWarmth() <= settings.getRestoreWarmth()
-            && s.getCurrentActivity() != PlayerActivity.RESTORING_WARMTH)
+        int goal = WintertodtGuidance.rewardTarget(settings.getPointGoal(), s.getPoints());
+        boolean timed = s.getRoundBudgetSeconds() >= 0;
+        boolean ending = finishing || (timed ? additionalRoots(s, settings, goal) == 0 : s.getEndUrgency() != EndUrgency.NORMAL);
+        int usefulBatch = minimumBatch(s, settings, goal);
+        if (s.getBrumaRoots() + s.getBrumaKindling() == 0 && finishComplete
+            && ((!timed && settings.getStrategy() != WintertodtStrategy.MASS_XP)
+                || (timed && additionalRoots(s, settings, goal) < usefulBatch)))
         {
-            boolean emergency = s.getWarmth() <= settings.getEmergencyWarmth();
-            if (s.getWarmthItem() >= 0)
-            {
-                return new WintertodtObjective(ObjectiveType.RESTORE_WARMTH,
-                    emergency ? "LOW WARMTH - restore now" : "Restore warmth",
-                    "warmth_low", TargetKind.NONE, 1, emergency, s.getWarmthItem());
-            }
-            // Never keep skilling or propose a long supply trip without a usable restorative.
-            return new WintertodtObjective(ObjectiveType.RESTORE_WARMTH,
-                "Move to the safe lobby - no warmth supplies", "no_warmth_supplies",
-                TargetKind.DOOR, 0, true);
+            return action(ObjectiveType.WAIT, "Final fuel fed - wait for the next round", "finish_wait", TargetKind.NONE);
         }
-
-        int goal = settings.getPointGoal().target(s.getPoints());
-        if (s.getPoints() >= goal)
+        if (timed && s.getBrumaRoots() + s.getBrumaKindling() == 0
+            && additionalRoots(s, settings, goal) < usefulBatch)
         {
-            // Goals secure rewards, they do not end productive mass-world play.
-            goal = PointGoal.NEXT_THRESHOLD.target(s.getPoints());
+            return action(ObjectiveType.WAIT, "Round ending - no time for another root", "finish_wait", TargetKind.NONE);
         }
-        boolean ending = s.getEndUrgency() != EndUrgency.NORMAL;
-        if (s.getEndUrgency() == EndUrgency.IMMINENT && s.getBrumaRoots() + s.getBrumaKindling() == 0
+        if ((!timed && s.getEndUrgency() == EndUrgency.IMMINENT || timed && s.getRoundBudgetSeconds() < 6) && s.getBrumaRoots() + s.getBrumaKindling() == 0
             && s.rewardThresholdReached())
         {
             return action(ObjectiveType.WAIT, "Round ending - rewards secured", "ending_secured", TargetKind.NONE);
         }
         // Cold does not stop chopping. Keep the resource batch ahead of distant maintenance.
-        if (s.getCurrentActivity() == PlayerActivity.CHOPPING && !ending)
+        if (s.getCurrentActivity() == PlayerActivity.CHOPPING && !ending
+            && !finishing && (!timed || additionalRoots(s, settings, goal) > 0))
         {
             return normal(s, settings, goal);
         }
@@ -120,9 +139,6 @@ public final class WintertodtDecisionEngine
                     "ending_pyromancer_blocked", TargetKind.PYROMANCER);
             }
         }
-        WintertodtObjective preparation = ending && s.getLocalBrazierState() == BrazierState.LIT
-            && s.getBrumaRoots() + s.getBrumaKindling() > 0 ? null : prepare(s, settings);
-        if (preparation != null) { return preparation; }
 
         if (s.getLocalBrazierState() == BrazierState.UNKNOWN
             || s.getLocalBrazierState() == BrazierState.UNAVAILABLE)
@@ -142,7 +158,13 @@ public final class WintertodtDecisionEngine
             return new WintertodtObjective(ObjectiveType.LIGHT, "Relight the brazier", "brazier_unlit",
                 TargetKind.BRAZIER, 0, false, ItemID.TINDERBOX, ItemID.WINT_TORCH, ItemID.WINT_TORCH_OFFHAND);
         }
-        if (ending)
+        WintertodtObjective preparation = ending && s.getLocalBrazierState() == BrazierState.LIT
+            && (s.getBrumaRoots() + s.getBrumaKindling() > 0 || finishing || finishComplete) ? null : prepare(s, settings);
+        if (preparation != null) { return preparation; }
+
+        WintertodtObjective deadline = finish(s, settings, goal);
+        if (deadline != null) { return deadline; }
+        if (ending && !timed)
         {
             if (s.getBrumaKindling() + s.getBrumaRoots() > 0)
             {
@@ -159,7 +181,7 @@ public final class WintertodtDecisionEngine
     private WintertodtObjective normal(WintertodtSnapshot s, PlannerSettings settings, int goal)
     {
         int materials = s.getBrumaRoots() + s.getBrumaKindling();
-        boolean fletch = settings.fletch(s) && s.getEndUrgency() == EndUrgency.NORMAL;
+        boolean fletch = settings.fletch(s) && (s.getRoundBudgetSeconds() >= 0 || s.getEndUrgency() == EndUrgency.NORMAL);
         if (normal == ObjectiveType.FLETCH && (!fletch || s.getBrumaRoots() == 0 || s.getBrumaKindling() >= kindlingTarget))
         {
             normal = ObjectiveType.FEED;
@@ -198,7 +220,7 @@ public final class WintertodtDecisionEngine
                 if (settings.getStrategy() == WintertodtStrategy.LOW_ATTENTION
                     || settings.getPointGoal() == PointGoal.MAXIMUM_PRACTICAL) { need = capacity; }
                 int preferred = settings.getStrategy() == WintertodtStrategy.MASS_BALANCED ? 20 : capacity;
-                if (s.getEndUrgency() == EndUrgency.ENDING_SOON) { preferred = Math.min(preferred, 3); }
+                if (s.getRoundBudgetSeconds() < 0 && s.getEndUrgency() == EndUrgency.ENDING_SOON) { preferred = Math.min(preferred, 3); }
                 batchTarget = Math.min(capacity, Math.max(materials + 1, Math.min(need, preferred)));
             }
             else
@@ -209,15 +231,90 @@ public final class WintertodtDecisionEngine
         if (normal == ObjectiveType.FLETCH)
         {
             int count = Math.min(s.getBrumaRoots(), Math.max(0, kindlingTarget - s.getBrumaKindling()));
-            return new WintertodtObjective(ObjectiveType.FLETCH,
-                (s.isInterrupted() ? "Continue fletching" : "Fletch " + count + " roots"),
-                "batch_fletch", TargetKind.NONE, count, false, ItemID.KNIFE, ItemID.WINT_BRUMA_ROOT);
+            if (s.getRoundBudgetSeconds() >= 0)
+            {
+                count = Math.min(count, WintertodtFinishPlan.fletchCapacity(s));
+                kindlingTarget = Math.min(kindlingTarget, s.getBrumaKindling() + count);
+            }
+            if (count == 0) { normal = ObjectiveType.FEED; return feed(s, "finish_feed", true); }
+            return fletch(s, count, "batch_fletch", false);
         }
         if (normal == ObjectiveType.FEED) { return feed(s, "batch_feed", false); }
         if (!s.isHasAxe()) { return tool("Get an axe", TargetKind.AXE_CRATE, "missing_axe"); }
         int remaining = Math.max(1, batchTarget - materials);
+        if (s.getRoundBudgetSeconds() >= 0)
+        {
+            // Limit today's instruction without permanently shrinking the resource batch.
+            // A corrected forecast may leave room for more of the original batch next tick.
+            remaining = Math.min(remaining, Math.max(1, additionalRoots(s, settings, goal)));
+        }
         return new WintertodtObjective(ObjectiveType.CHOP, "Chop " + remaining + " bruma roots",
             "batch_chop", TargetKind.ROOTS, remaining, false);
+    }
+
+    private static int minimumBatch(WintertodtSnapshot s, PlannerSettings settings, int goal)
+    {
+        // XP mode values every root that fits; reward strategies can avoid tiny trips.
+        if (settings.getStrategy() == WintertodtStrategy.MASS_XP) { return 1; }
+        // A small trip can still be worthwhile if it secures a reward threshold.
+        return s.rewardThresholdReached() ? Math.min(6, Math.max(1, ceil(goal - s.getPoints(), settings.fletch(s) ? 25 : 10))) : 1;
+    }
+
+    private static int additionalRoots(WintertodtSnapshot s, PlannerSettings settings, int goal)
+    {
+        boolean fletch = settings.fletch(s);
+        int existingFletches = fletch ? Math.min(s.getBrumaRoots(), upgrades(s, settings, goal)) : 0;
+        return WintertodtFinishPlan.additionalRoots(s, fletch, existingFletches);
+    }
+
+    private WintertodtObjective finish(WintertodtSnapshot s, PlannerSettings settings, int goal)
+    {
+        int materials = s.getBrumaRoots() + s.getBrumaKindling();
+        if (materials == 0)
+        {
+            if (finishing) { finishComplete = true; }
+            finishing = false;
+            if (s.getRoundBudgetSeconds() >= 0 && additionalRoots(s, settings, goal) == 0)
+            { return action(ObjectiveType.WAIT, "Round ending - no time for another root", "finish_wait", TargetKind.NONE); }
+            if (finishComplete && ((s.getRoundBudgetSeconds() >= 0
+                && additionalRoots(s, settings, goal) < minimumBatch(s, settings, goal))
+                || (s.getRoundBudgetSeconds() < 0 && settings.getStrategy() != WintertodtStrategy.MASS_XP)))
+            { return action(ObjectiveType.WAIT, "Final fuel fed - wait for the next round", "finish_wait", TargetKind.NONE); }
+            finishComplete = false;
+            return null;
+        }
+        boolean timed = s.getRoundBudgetSeconds() >= 0;
+        boolean stopChopping = timed && additionalRoots(s, settings, goal) == 0;
+        if (!finishing && !stopChopping) { return null; }
+        if (!finishing)
+        {
+            finishing = true;
+            int count = settings.fletch(s) ? Math.min(upgrades(s, settings, goal), WintertodtFinishPlan.fletchCapacity(s)) : 0;
+            // Keep an existing smaller fletching target; do not restart a feeding batch.
+            if (normal == ObjectiveType.FEED) { count = 0; }
+            else if (normal == ObjectiveType.FLETCH) { count = Math.min(count, Math.max(0, kindlingTarget - s.getBrumaKindling())); }
+            kindlingTarget = s.getBrumaKindling() + count;
+            normal = count > 0 ? ObjectiveType.FLETCH : ObjectiveType.FEED;
+        }
+        int count = Math.min(s.getBrumaRoots(), Math.max(0, kindlingTarget - s.getBrumaKindling()));
+        if (timed) { count = Math.min(count, WintertodtFinishPlan.fletchCapacity(s)); }
+        else { count = 0; } // Lost forecast: preserve feeding time rather than gamble on fletching.
+        kindlingTarget = Math.min(kindlingTarget, s.getBrumaKindling() + count);
+        if (normal == ObjectiveType.FLETCH && count > 0) { return fletch(s, count, "finish_fletch", true); }
+        normal = ObjectiveType.FEED;
+        return feed(s, "finish_feed", true);
+    }
+
+    private WintertodtObjective fletch(WintertodtSnapshot s, int count, String reason, boolean urgent)
+    {
+        if (s.getBrazierDistance() != 0)
+        {
+            return new WintertodtObjective(ObjectiveType.POSITION, "Move beside the brazier to fletch",
+                "fletch_at_brazier", TargetKind.BRAZIER, count, urgent);
+        }
+        return new WintertodtObjective(ObjectiveType.FLETCH,
+            urgent ? "Fletch " + count + " roots, then feed" : s.isInterrupted() ? "Continue fletching" : "Fletch " + count + " roots",
+            reason, TargetKind.NONE, count, urgent, ItemID.KNIFE, ItemID.WINT_BRUMA_ROOT);
     }
 
     private WintertodtObjective prepare(WintertodtSnapshot s, PlannerSettings settings)
@@ -226,7 +323,7 @@ public final class WintertodtDecisionEngine
         TargetKind crate = TargetKind.NONE;
         if (!s.isHasAxe()) { toolName = "an axe"; crate = TargetKind.AXE_CRATE; }
         else if (!s.isHasHammer()) { toolName = "a hammer"; crate = TargetKind.HAMMER_CRATE; }
-        else if (!s.isHasKnife() && settings.getFletchMode() != FletchMode.NEVER)
+        else if (!s.isHasKnife() && WintertodtGuidance.needsKnife(settings))
         { toolName = "a knife"; crate = TargetKind.KNIFE_CRATE; }
         else if (!s.isHasTinderbox() && !s.isHasBrumaTorch())
         { toolName = "a tinderbox"; crate = TargetKind.TINDERBOX_CRATE; }
@@ -234,6 +331,17 @@ public final class WintertodtDecisionEngine
         {
             if (s.getFreeSlots() == 0) { return makeSpace(s, "tools"); }
             return tool("Get " + toolName + " before starting", crate, "prepare_tools");
+        }
+        // A partial reserve is enough to finish a short remaining window. Do not
+        // send carried fuel on a late supply trip just to round doses up to a bottle.
+        boolean shortWindow = s.getRoundBudgetSeconds() >= 0 && s.getRoundBudgetSeconds() <= 60
+            || s.getEndUrgency() != EndUrgency.NORMAL;
+        if (s.active() && shortWindow && (s.getRejuvenationDoses() > 0 || s.getBrumaRoots() + s.getBrumaKindling() > 0))
+        {
+            if (preparationDoseTarget == 0)
+            { preparationDoseTarget = WintertodtSupplyPlan.recommendedPotions(s, settings.getRestoreWarmth()) * 4; }
+            suppliesReady = true;
+            return null;
         }
         // Do not replenish every consumed dose mid-round. Start another supply trip only
         // when empty; a round transition resets this latch in the plugin.
@@ -289,7 +397,8 @@ public final class WintertodtDecisionEngine
     private WintertodtObjective feed(WintertodtSnapshot s, String reason, boolean urgent)
     {
         return new WintertodtObjective(ObjectiveType.FEED,
-            urgent && !s.rewardThresholdReached() ? "Feed now - secure 500 points"
+            "finish_feed".equals(reason) ? "Stop processing - feed the brazier now"
+                : urgent && !s.rewardThresholdReached() ? "Feed now - secure 500 points"
                 : s.isInterrupted() ? "Continue feeding" : "Feed the brazier",
             reason, TargetKind.BRAZIER, s.getBrumaRoots() + s.getBrumaKindling(), urgent,
             s.getBrumaKindling() > 0 ? ItemID.WINT_BRUMA_KINDLING : ItemID.WINT_BRUMA_ROOT);

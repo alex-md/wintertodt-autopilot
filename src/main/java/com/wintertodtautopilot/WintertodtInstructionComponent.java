@@ -19,7 +19,7 @@ final class WintertodtInstructionComponent implements LayoutableRenderableEntity
     public Dimension render(Graphics2D graphics)
     {
         Font old = graphics.getFont();
-        graphics.setFont(old.deriveFont(Font.BOLD, old.getSize2D() + 2));
+        graphics.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
         try
         {
             FontMetrics metrics = graphics.getFontMetrics();

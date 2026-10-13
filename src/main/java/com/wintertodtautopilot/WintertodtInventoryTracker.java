@@ -65,7 +65,7 @@ public class WintertodtInventoryTracker
         }
         b.brumaRoots(roots).brumaKindling(kindling).foodCount(food).rejuvenationDoses(doses)
             .unfinishedPotionCount(unfinished).brumaHerbCount(herbs).freeSlots(28 - occupied)
-            .warmthItem(bestFood >= 0 ? bestFood : potion).potionItem(potion)
+            .warmthItem(potion >= 0 ? potion : bestFood).potionItem(potion)
             .hasKnife(knife).hasHammer(hammer).hasTinderbox(tinder).hasBrumaTorch(torch).hasAxe(axe)
             .warmClothingCount(warmItems < 0 ? -1 : Math.min(4, warmItems));
     }

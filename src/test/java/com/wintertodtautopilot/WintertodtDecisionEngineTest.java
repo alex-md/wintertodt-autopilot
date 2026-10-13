@@ -19,7 +19,7 @@ public class WintertodtDecisionEngineTest
         return WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).wintertodtEnergy(80).warmth(90).points(0)
             .localBrazierState(BrazierState.LIT).localPyromancerKnown(true)
             .firemakingLevel(99).warmClothingCount(4).rejuvenationDoses(4).potionItem(ItemID.WINT_POTION4)
-            .hasHammer(true).hasKnife(true).hasTinderbox(true).hasAxe(true).freeSlots(24).workingCorner(WorkingCorner.SOUTHEAST);
+            .brazierDistance(0).hasHammer(true).hasKnife(true).hasTinderbox(true).hasAxe(true).freeSlots(24).workingCorner(WorkingCorner.SOUTHEAST);
     }
     private WintertodtObjective decide(WintertodtSnapshot.WintertodtSnapshotBuilder s) { return engine.decide(s.build(), settings); }
     @Test public void warmthPreemptsBrokenBrazier()
@@ -257,4 +257,165 @@ public class WintertodtDecisionEngineTest
         resume = decide(s.interrupted(true));
         assertEquals(ObjectiveType.FEED, resume.getType()); assertEquals("Continue feeding", resume.getInstruction());
     }
+    @Test public void fletchingMovesFromRootsToBrazierFirst()
+    {
+        WintertodtSnapshot.WintertodtSnapshotBuilder s = active().brumaRoots(20).brazierDistance(8);
+        WintertodtObjective move = decide(s);
+        assertEquals(ObjectiveType.POSITION, move.getType());
+        assertEquals(TargetKind.BRAZIER, move.getTarget());
+        assertEquals("fletch_at_brazier", move.getReason());
+        assertTrue(move.getItemIds().isEmpty());
+        assertEquals(ObjectiveType.POSITION, decide(s.brazierDistance(3).currentActivity(PlayerActivity.MOVING)).getType());
+        assertEquals(ObjectiveType.FLETCH, decide(s.brazierDistance(0).currentActivity(PlayerActivity.IDLE)).getType());
+        assertEquals(ObjectiveType.REPAIR, decide(s.localBrazierState(BrazierState.BROKEN)).getType());
+    }
+    @Test public void finishingTrimsFletchingAndThenFeedsAllFuel()
+    {
+        WintertodtSnapshot.WintertodtSnapshotBuilder s = active().points(0).brumaRoots(8)
+            .roundBudgetSeconds(30).estimatedSecondsLeft(43).currentActivity(PlayerActivity.CHOPPING);
+        WintertodtObjective finish = decide(s);
+        assertEquals(ObjectiveType.FLETCH, finish.getType());
+        assertEquals("finish_fletch", finish.getReason());
+        assertEquals(8, finish.getQuantity());
+        // Faster drain now leaves time for only two upgrades, not the original eight.
+        finish = decide(s.roundBudgetSeconds(20));
+        assertEquals(2, finish.getQuantity());
+        finish = decide(s.brumaRoots(6).brumaKindling(2).roundBudgetSeconds(17));
+        assertEquals(ObjectiveType.FEED, finish.getType());
+        assertEquals("finish_feed", finish.getReason());
+        assertEquals(8, finish.getQuantity());
+    }
+    @Test public void travelCostStopsChoppingBeforeFeedTimeRunsOut()
+    {
+        WintertodtSnapshot.WintertodtSnapshotBuilder s = active().points(450).brumaRoots(10)
+            .brazierDistance(10).roundBudgetSeconds(24).currentActivity(PlayerActivity.CHOPPING);
+        WintertodtObjective finish = decide(s);
+        assertEquals(ObjectiveType.FEED, finish.getType());
+        assertTrue(finish.isUrgent());
+    }
+    @Test public void lowEnergyCanStillAllowASmallUsefulFletchBatch()
+    {
+        WintertodtSnapshot.WintertodtSnapshotBuilder s = active().points(475).brumaRoots(1)
+            .wintertodtEnergy(3).endUrgency(EndUrgency.IMMINENT).roundBudgetSeconds(12);
+        assertEquals(ObjectiveType.FLETCH, decide(s).getType());
+        assertEquals(ObjectiveType.FEED, decide(s.brumaRoots(0).brumaKindling(1).roundBudgetSeconds(9)).getType());
+    }
+    @Test public void committedFeedDoesNotReturnToChoppingWhenForecastChanges()
+    {
+        WintertodtSnapshot.WintertodtSnapshotBuilder s = active().points(500).brumaRoots(10).roundBudgetSeconds(18);
+        assertEquals(ObjectiveType.FEED, decide(s).getType());
+        assertEquals(ObjectiveType.FEED, decide(s.roundBudgetSeconds(70)).getType());
+        assertEquals(ObjectiveType.FEED, decide(s.roundBudgetSeconds(-1)).getType());
+        assertEquals(ObjectiveType.CHOP, decide(s.brumaRoots(0).roundBudgetSeconds(100)).getType());
+    }
+    @Test public void predictedFinishPreemptsAlwaysFletchButWarmthStillWins()
+    {
+        settings = new PlannerSettings(WintertodtStrategy.MASS_POINTS, PointGoal.MAXIMUM_PRACTICAL, FletchMode.ALWAYS, 35, 20);
+        WintertodtSnapshot.WintertodtSnapshotBuilder s = active().brumaRoots(20).roundBudgetSeconds(30);
+        assertEquals(ObjectiveType.FEED, decide(s).getType());
+        assertEquals(ObjectiveType.RESTORE_WARMTH, decide(s.warmth(18).warmthItem(ItemID.WINT_POTION4)).getType());
+    }
+    @Test public void timedBatchIsSmallEnoughToProcessAndFeed()
+    {
+        settings = new PlannerSettings(WintertodtStrategy.LOW_ATTENTION, PointGoal.MINIMUM_500, FletchMode.AUTOMATIC, 35, 20);
+        WintertodtObjective result = decide(active().roundBudgetSeconds(60));
+        assertEquals(ObjectiveType.CHOP, result.getType());
+        assertTrue(result.getQuantity() < 24);
+        assertTrue(result.getQuantity() * (WintertodtFinishPlan.CHOP_SECONDS + WintertodtFinishPlan.FLETCH_SECONDS
+            + WintertodtFinishPlan.FEED_SECONDS) + 1.2 <= 60);
+    }
+    @Test public void xpAutomaticDoesNotCollectUnusedKnife()
+    {
+        settings = new PlannerSettings(WintertodtStrategy.MASS_XP, PointGoal.MINIMUM_500, FletchMode.AUTOMATIC, 35, 20);
+        assertEquals(ObjectiveType.CHOP, decide(active().hasKnife(false)).getType());
+    }
+
+    @Test public void shortTimeWindowDoesNotForceTinyCarriedBatchToFeed()
+    {
+        WintertodtSnapshot.WintertodtSnapshotBuilder s = active().brumaRoots(2).roundBudgetSeconds(40).currentActivity(PlayerActivity.CHOPPING);
+        WintertodtObjective o = decide(s);
+        assertEquals(ObjectiveType.CHOP, o.getType());
+        assertTrue(o.getQuantity() > 1);
+        assertEquals(ObjectiveType.CHOP, decide(s.roundBudgetSeconds(39)).getType());
+    }
+    @Test public void securedRewardsAvoidAnotherTinyTripButNearThresholdStillAllowsIt()
+    {
+        assertEquals(ObjectiveType.WAIT, decide(active().points(600).roundBudgetSeconds(30)).getType());
+        engine.reset();
+        WintertodtObjective worthwhile = decide(active().points(975).roundBudgetSeconds(15));
+        assertEquals(ObjectiveType.CHOP, worthwhile.getType());
+        assertEquals(1, worthwhile.getQuantity());
+    }
+    @Test public void explicitPotionInstructionPreemptsChoppingAndMissingHud()
+    {
+        WintertodtSnapshot.WintertodtSnapshotBuilder s = active().warmth(35).warmthItem(ItemID.WINT_POTION2)
+            .currentActivity(PlayerActivity.CHOPPING);
+        WintertodtObjective drink = decide(s);
+        assertEquals(ObjectiveType.RESTORE_WARMTH, drink.getType());
+        assertEquals("Drink rejuvenation potion", drink.getInstruction());
+        assertTrue(drink.getItemIds().contains(ItemID.WINT_POTION2));
+        assertEquals(ObjectiveType.RESTORE_WARMTH, decide(s.roundState(RoundState.COUNTDOWN).wintertodtEnergy(-1).secondsToStart(0)).getType());
+    }
+
+    @Test public void relightingPreemptsReserveRestocking()
+    {
+        decide(active());
+        WintertodtObjective o = decide(active().rejuvenationDoses(0).brumaKindling(10)
+            .localBrazierState(BrazierState.UNLIT).currentActivity(PlayerActivity.FEEDING));
+        assertEquals(ObjectiveType.LIGHT, o.getType());
+        assertTrue(WintertodtHighlight.needsAttention(active().currentActivity(PlayerActivity.FEEDING).build(), o));
+    }
+
+    @Test public void correctedForecastDoesNotLeaveATinyBatchPermanentlyLatched()
+    {
+        WintertodtSnapshot.WintertodtSnapshotBuilder s = active().roundBudgetSeconds(60);
+        assertEquals(8, decide(s).getQuantity());
+        WintertodtObjective corrected = decide(s.brumaRoots(8).freeSlots(16).roundBudgetSeconds(120));
+        assertEquals(ObjectiveType.CHOP, corrected.getType());
+        assertEquals(12, corrected.getQuantity());
+    }
+
+    @Test public void midRoundEntryWithPartialReserveDoesNotMakeALateSupplyTrip()
+    {
+        WintertodtObjective o = decide(active().rejuvenationDoses(3).points(350).brumaRoots(8)
+            .roundBudgetSeconds(35).estimatedSecondsLeft(43).wintertodtEnergy(8).endUrgency(EndUrgency.ENDING_SOON));
+        assertEquals(ObjectiveType.FLETCH, o.getType());
+        assertEquals(5, o.getQuantity());
+        engine.reset();
+        o = decide(active().rejuvenationDoses(0).brumaRoots(8).roundBudgetSeconds(35).endUrgency(EndUrgency.ENDING_SOON));
+        assertEquals(ObjectiveType.FLETCH, o.getType());
+        assertEquals(8, o.getQuantity());
+        o = decide(active().rejuvenationDoses(0).brumaRoots(8).roundBudgetSeconds(35).warmth(30));
+        assertEquals(ObjectiveType.RESTORE_WARMTH, o.getType());
+        assertEquals(TargetKind.DOOR, o.getTarget());
+    }
+
+    @Test public void xpKeepsChoppingSmallBatchesAtEightPercentAfterRelighting()
+    {
+        settings = new PlannerSettings(WintertodtStrategy.MASS_XP, PointGoal.MINIMUM_500, FletchMode.AUTOMATIC, 35, 20);
+        WintertodtSnapshot.WintertodtSnapshotBuilder s = active().points(650).wintertodtEnergy(8)
+            .endUrgency(EndUrgency.ENDING_SOON).roundBudgetSeconds(18).localBrazierState(BrazierState.UNLIT);
+        assertEquals(ObjectiveType.LIGHT, decide(s).getType());
+        WintertodtObjective chop = decide(s.localBrazierState(BrazierState.LIT));
+        assertEquals(ObjectiveType.CHOP, chop.getType()); assertEquals(3, chop.getQuantity());
+        assertEquals(ObjectiveType.FEED, decide(s.brumaRoots(3).roundBudgetSeconds(8)).getType());
+        // A corrected/slow pace leaves room for two further roots, even after the final fuel was fed.
+        chop = decide(s.brumaRoots(0).points(680).roundBudgetSeconds(14));
+        assertEquals(ObjectiveType.CHOP, chop.getType()); assertEquals(2, chop.getQuantity());
+        assertEquals(ObjectiveType.WAIT, decide(s.roundBudgetSeconds(5)).getType());
+    }
+    @Test public void xpDoesNotStayDoneWhenRelightingTemporarilyLosesForecast()
+    {
+        settings = new PlannerSettings(WintertodtStrategy.MASS_XP, PointGoal.MINIMUM_500, FletchMode.AUTOMATIC, 35, 20);
+        WintertodtSnapshot.WintertodtSnapshotBuilder s = active().points(650).brumaRoots(3).roundBudgetSeconds(8)
+            .wintertodtEnergy(10).endUrgency(EndUrgency.ENDING_SOON);
+        assertEquals(ObjectiveType.FEED, decide(s).getType());
+        assertEquals(ObjectiveType.WAIT, decide(s.brumaRoots(0).roundBudgetSeconds(5)).getType());
+        assertEquals(ObjectiveType.LIGHT, decide(s.roundBudgetSeconds(-1).localBrazierState(BrazierState.UNLIT)).getType());
+        WintertodtObjective chop = decide(s.localBrazierState(BrazierState.LIT));
+        assertEquals(ObjectiveType.CHOP, chop.getType()); assertEquals(3, chop.getQuantity());
+        // Unknown timing at truly imminent energy remains conservative.
+        assertEquals(ObjectiveType.WAIT, decide(s.wintertodtEnergy(2).endUrgency(EndUrgency.IMMINENT)).getType());
+    }
+
 }

@@ -19,7 +19,7 @@ public class WintertodtInventoryOverlay extends WidgetItemOverlay
     public void renderItemOverlay(Graphics2D graphics, int itemId, WidgetItem item)
     {
         WintertodtObjective o = plugin.getObjective();
-        if (!config.highlightInventory() || o == null || !o.getItemIds().contains(itemId)) { return; }
+        if (plugin.isPaused() || !config.highlightInventory() || o == null || !o.getItemIds().contains(itemId)) { return; }
         Rectangle bounds = item.getCanvasBounds();
         if (bounds == null) { return; }
         WintertodtHighlight.inventory(graphics, bounds, WintertodtOverlay.color(o),

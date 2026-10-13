@@ -1,7 +1,5 @@
 package com.wintertodtautopilot;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
@@ -18,14 +16,14 @@ public class WintertodtRoundTracker
     private static final Pattern NUMBER = Pattern.compile("([0-9][0-9,]*)");
     @Inject private Client client;
     private RoundState previous = RoundState.OUTSIDE;
-    private final Deque<int[]> energySamples = new ArrayDeque<>();
+    private final WintertodtRoundForecast forecast = new WintertodtRoundForecast();
     private int completedAt = -1;
     private int finalPoints = -1;
 
     public void reset()
     {
         previous = RoundState.OUTSIDE;
-        energySamples.clear();
+        forecast.reset();
         completedAt = -1;
         finalPoints = -1;
     }
@@ -59,7 +57,7 @@ public class WintertodtRoundTracker
         }
         if (state == RoundState.ACTIVE && !wasActive)
         {
-            energySamples.clear(); completedAt = -1; finalPoints = -1;
+            forecast.reset(); completedAt = -1; finalPoints = -1;
         }
         EndUrgency urgency = EndUrgency.NORMAL;
         if (state == RoundState.ACTIVE)
@@ -68,28 +66,21 @@ public class WintertodtRoundTracker
             urgency = classify(energy, tick, lit);
             if (urgency != EndUrgency.NORMAL) { state = RoundState.ENDING; }
         }
-        else { energySamples.clear(); }
+        else { forecast.reset(); }
         if (state == RoundState.COMPLETE && finalPoints >= 0)
         {
             finalPoints = Math.max(points, finalPoints);
             points = finalPoints;
         }
         b.roundState(state).wintertodtEnergy(energy).points(points).secondsToStart(seconds)
-            .endUrgency(urgency).litBraziers(lit);
+            .endUrgency(urgency).litBraziers(lit)
+            .estimatedSecondsLeft(forecast.getSecondsLeft()).roundBudgetSeconds(forecast.getBudgetSeconds());
         previous = state;
     }
     EndUrgency classify(int energy, int tick, int lit)
     {
-        if (!energySamples.isEmpty() && energy > energySamples.getLast()[1]) { energySamples.clear(); }
-        energySamples.addLast(new int[]{tick, energy});
-        while (!energySamples.isEmpty() && tick - energySamples.getFirst()[0] > 30) { energySamples.removeFirst(); }
-        double secondsLeft = Double.POSITIVE_INFINITY;
-        if (energySamples.size() >= 2)
-        {
-            int[] first = energySamples.getFirst();
-            int drain = first[1] - energy;
-            if (drain > 0 && tick - first[0] >= 10) { secondsLeft = energy * (tick - first[0]) * 0.6 / drain; }
-        }
+        forecast.observe(energy, tick, lit);
+        double secondsLeft = forecast.getSecondsLeft() < 0 ? Double.POSITIVE_INFINITY : forecast.getSecondsLeft();
         // Energy cutoffs are conservative categories, not promises of an exact finish time.
         if (energy <= 3 || secondsLeft <= 10) { return EndUrgency.IMMINENT; }
         if (energy <= 12 && lit > 0 || secondsLeft <= 35) { return EndUrgency.ENDING_SOON; }

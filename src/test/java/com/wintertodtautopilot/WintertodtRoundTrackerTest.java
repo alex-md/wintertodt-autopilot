@@ -89,9 +89,27 @@ public class WintertodtRoundTrackerTest
     @Test public void classificationsUseObservedRateWithoutExactCountdown()
     {
         assertEquals(EndUrgency.NORMAL, tracker.classify(70, 1, 4));
-        assertEquals(EndUrgency.ENDING_SOON, tracker.classify(40, 21, 4));
+        assertEquals(EndUrgency.NORMAL, tracker.classify(40, 21, 4)); // A single burst is not a reliable pace.
         assertEquals(EndUrgency.IMMINENT, tracker.classify(3, 22, 4));
         tracker.reset();
         assertEquals(EndUrgency.NORMAL, tracker.classify(100, 100, 4));
     }
+    @Test public void observedDrainFeedsIntoDeadlinePlannerAndClearsBetweenRounds()
+    {
+        WintertodtSnapshot observed = null;
+        for (int t = 100; t <= 170; t++) { observed = observe(t, 10 - (t - 100) / 10, 450, 0); }
+        assertTrue(observed.getEstimatedSecondsLeft() >= 17 && observed.getEstimatedSecondsLeft() <= 21);
+        assertEquals((int) (observed.getEstimatedSecondsLeft() * .9) - 3, observed.getRoundBudgetSeconds());
+        WintertodtSnapshot s = observed.toBuilder().warmth(90).brumaRoots(5).brazierDistance(0)
+            .workingCorner(WorkingCorner.SOUTHEAST).localBrazierState(BrazierState.LIT)
+            .localPyromancerKnown(true).hasAxe(true).hasKnife(true).hasHammer(true).hasTinderbox(true)
+            .rejuvenationDoses(4).freeSlots(19).currentActivity(PlayerActivity.CHOPPING).build();
+        WintertodtObjective objective = new WintertodtDecisionEngine().decide(s,
+            new PlannerSettings(WintertodtStrategy.MASS_BALANCED, PointGoal.MINIMUM_500, FletchMode.AUTOMATIC, 35, 20));
+        assertEquals(ObjectiveType.FEED, objective.getType());
+        assertEquals("finish_feed", objective.getReason());
+        assertEquals(-1, observe(171, 0, 500, 75).getEstimatedSecondsLeft());
+        assertEquals(-1, observe(300, 100, 0, 0).getRoundBudgetSeconds());
+    }
+
 }

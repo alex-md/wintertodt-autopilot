@@ -12,6 +12,7 @@ public class WintertodtSnapshot
     @Builder.Default RoundState roundState = RoundState.OUTSIDE;
     @Builder.Default int wintertodtEnergy = -1;
     @Builder.Default int warmth = -1;
+    @Builder.Default int rawWarmth = -1;
     @Builder.Default int points = -1;
     @Builder.Default int secondsToStart = -1;
     int brumaRoots;
@@ -42,6 +43,10 @@ public class WintertodtSnapshot
     @Builder.Default WorkingCorner workingCorner = WorkingCorner.AUTOMATIC;
     @Builder.Default EndUrgency endUrgency = EndUrgency.NORMAL;
     int litBraziers;
+    @Builder.Default int estimatedSecondsLeft = -1;
+    @Builder.Default int roundBudgetSeconds = -1;
+    /** Walking tile distance to a usable adjacent tile; -1 if not observed. */
+    @Builder.Default int brazierDistance = -1;
     @Builder.Default String interaction = "None";
     public int inventoryPoints() { return brumaRoots * WintertodtConstants.ROOT_POINTS + brumaKindling * WintertodtConstants.KINDLING_POINTS; }
     public int potentialPointsIfFletched() { return (brumaRoots + brumaKindling) * WintertodtConstants.KINDLING_POINTS; }

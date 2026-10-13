@@ -2,6 +2,7 @@ package com.wintertodtautopilot;
 
 import com.google.inject.Provides;
 import javax.inject.Inject;
+import javax.swing.SwingUtilities;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -14,10 +15,14 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.events.ConfigChanged;
 
 @PluginDescriptor(name = "Wintertodt Autopilot",
-    description = "One next action with local targets, warmth and reward planning for Wintertodt",
-    tags = {"wintertodt", "firemaking", "minigame", "helper"})
+    description = "Shows your next Wintertodt action, highlights what you need, and helps plan warmth and points. You do the clicking.",
+    tags = {"wintertodt", "wt", "firemaking", "fm", "woodcutting", "fletching", "skilling", "minigame",
+        "helper", "guide", "brazier", "bruma", "warmth", "points", "rewards", "mass"})
 @Slf4j
 public class WintertodtAutopilotPlugin extends Plugin
 {
@@ -32,8 +37,14 @@ public class WintertodtAutopilotPlugin extends Plugin
     @Inject private OverlayManager overlays;
     @Inject private WintertodtOverlay panel;
     @Inject private WintertodtSceneOverlay scene;
+    @Inject private WintertodtActionLabelOverlay actionLabel;
     @Inject private WintertodtInventoryOverlay inventory;
     @Inject private Notifier notifier;
+    @Inject private ClientToolbar toolbar;
+    @Inject private ConfigManager configManager;
+    private WintertodtPluginPanel sidebar;
+    private NavigationButton navigation;
+    @Getter private volatile boolean paused;
     private final WintertodtDecisionEngine engine = new WintertodtDecisionEngine();
     private final WintertodtAttentionTracker attention = new WintertodtAttentionTracker();
     @Getter private WintertodtSnapshot snapshot = WintertodtSnapshot.builder().build();
@@ -51,15 +62,29 @@ public class WintertodtAutopilotPlugin extends Plugin
         return manager.getConfig(WintertodtAutopilotConfig.class);
     }
     @Override
-    protected void startUp()
+    protected void startUp() throws Exception
     {
-        overlays.add(panel); overlays.add(scene); overlays.add(inventory);
+        paused = false;
+        onEdt(() -> {
+            sidebar = new WintertodtPluginPanel(this::togglePause,
+                (key, value) -> configManager.setConfiguration("wintertodtautopilot", key, value));
+            navigation = NavigationButton.builder().tooltip("Wintertodt Autopilot")
+                .icon(WintertodtPluginPanel.icon()).priority(7).panel(sidebar).build();
+            toolbar.addNavigation(navigation);
+        });
+        overlays.add(panel); overlays.add(scene); overlays.add(actionLabel); overlays.add(inventory);
         clientThread.invoke(this::reset);
     }
     @Override
-    protected void shutDown()
+    protected void shutDown() throws Exception
     {
-        overlays.remove(panel); overlays.remove(scene); overlays.remove(inventory);
+        onEdt(() -> {
+            toolbar.removeNavigation(navigation);
+            navigation = null;
+            sidebar = null;
+        });
+        paused = false;
+        overlays.remove(panel); overlays.remove(scene); overlays.remove(actionLabel); overlays.remove(inventory);
         clientThread.invoke(this::reset);
     }
     private void reset()
@@ -67,6 +92,7 @@ public class WintertodtAutopilotPlugin extends Plugin
         arrow.clear(); paths.reset(); potionTargetDoses = 0; tracker.reset(); objects.reset(); npcs.reset(); engine.reset(); attention.reset();
         snapshot = WintertodtSnapshot.builder().build(); objective = null;
         targetObject = null; targetNpc = null; targetPoint = null; bootstrapNeeded = true;
+        refreshPanel();
     }
     @Subscribe
     public void onGameStateChanged(GameStateChanged event)
@@ -107,11 +133,54 @@ public class WintertodtAutopilotPlugin extends Plugin
         }
         snapshot = next; objective = chosen;
         potionTargetDoses = engine.getPreparationDoseTarget();
+        refreshPanel();
+        if (paused)
+        {
+            clearGuidance();
+            return;
+        }
         resolveTarget();
         paths.update(targetPoint, targetObject, targetNpc, config.showPath() || config.highlightStandingTiles());
         arrow.update(targetNpc, targetPoint, config.showHintArrow());
         String message = attention.notification(snapshot, objective, config, client.getTickCount());
         if (message != null) { notifier.notify(message); }
+    }
+    private static void onEdt(Runnable action) throws Exception
+    {
+        if (SwingUtilities.isEventDispatchThread()) { action.run(); }
+        else { SwingUtilities.invokeAndWait(action); }
+    }
+    private void refreshPanel()
+    {
+        WintertodtPluginPanel current = sidebar;
+        if (current != null)
+        {
+            current.update(new WintertodtPanelState(snapshot, objective, PlannerSettings.from(config),
+                config.workingCorner(), potionTargetDoses, paused, config.showPath()));
+        }
+    }
+    public void togglePause()
+    {
+        clientThread.invoke(() -> {
+            paused = !paused;
+            attention.reset();
+            if (paused) { clearGuidance(); }
+            else { engine.reset(); }
+            refreshPanel();
+        });
+    }
+    private void clearGuidance()
+    {
+        arrow.clear(); paths.reset();
+        targetObject = null; targetNpc = null; targetPoint = null;
+    }
+    @Subscribe
+    public void onConfigChanged(ConfigChanged event)
+    {
+        if ("wintertodtautopilot".equals(event.getGroup()))
+        {
+            clientThread.invoke(this::refreshPanel);
+        }
     }
     private void resolveTarget()
     {

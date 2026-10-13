@@ -14,7 +14,6 @@ import net.runelite.api.TileObject;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.ui.overlay.*;
-import net.runelite.client.ui.overlay.components.TextComponent;
 import net.runelite.client.ui.overlay.outline.ModelOutlineRenderer;
 
 public class WintertodtSceneOverlay extends Overlay
@@ -35,16 +34,17 @@ public class WintertodtSceneOverlay extends Overlay
     {
         WintertodtObjective o = plugin.getObjective();
         WintertodtSnapshot s = plugin.getSnapshot();
-        if (o == null || s.getRoundState() == RoundState.OUTSIDE) { return null; }
+        if (plugin.isPaused() || o == null || s.getRoundState() == RoundState.OUTSIDE) { return null; }
         Color color = WintertodtOverlay.color(o);
         float strength = WintertodtHighlight.strength(s, o, config.pulseInterruptions());
         if (config.highlightTarget())
         {
             NPC npc = plugin.getTargetNpc(); TileObject object = plugin.getTargetObject();
-            int width = Math.round(3 + 2 * strength);
+            int width = config.pulseInterruptions() && WintertodtHighlight.needsAttention(s, o)
+                ? Math.round(1 + 5 * strength) : 2;
             Color outline = WintertodtHighlight.alpha(color, (int) (255 * strength));
-            if (npc != null) { outlines.drawOutline(npc, width, outline, 2); }
-            else if (object != null) { outlines.drawOutline(object, width, outline, 2); }
+            if (npc != null) { outlines.drawOutline(npc, width, outline, 3); }
+            else if (object != null) { outlines.drawOutline(object, width, outline, 3); }
         }
         List<WorldPoint> path = plugin.getPath();
         if (config.showPath())
@@ -67,15 +67,11 @@ public class WintertodtSceneOverlay extends Overlay
                 Polygon tile = tile(path.get(i));
                 if (tile != null) { WintertodtHighlight.tile(graphics, tile, color, strength, false); }
             }
-            WorldPoint destination = path.isEmpty() ? null : path.get(path.size() - 1);
-            if (o.getTarget() == TargetKind.NONE && s.getCurrentActivity() != PlayerActivity.MOVING
-                && (o.getType() == ObjectiveType.FLETCH || o.getType() == ObjectiveType.MAKE_REJUVENATION))
-            { destination = s.getPlayerLocation(); }
+            WorldPoint destination = standingPoint(s, o, path);
             Polygon tile = destination == null ? null : tile(destination);
             if (tile != null)
             {
                 WintertodtHighlight.tile(graphics, tile, color, strength, true);
-                label(graphics, tile, standingLabel(o), color);
             }
         }
         return null;
@@ -87,33 +83,27 @@ public class WintertodtSceneOverlay extends Overlay
     }
     static String standingLabel(WintertodtObjective objective)
     {
+        if ("fletch_at_brazier".equals(objective.getReason())) { return "FLETCH HERE"; }
         switch (objective.getType())
         {
-            case CHOP: return "CHOP HERE";
-            case FEED: return "FEED HERE";
-            case FLETCH: return "FLETCH HERE";
+            case CHOP: return "CHOP";
+            case FEED: return "FEED";
+            case FLETCH: return "FLETCH";
             case REPAIR: return "REPAIR HERE";
-            case LIGHT: return "LIGHT HERE";
-            case HEAL_PYROMANCER: return "HEAL HERE";
+            case LIGHT: return "LIGHT";
+            case HEAL_PYROMANCER: return "HEAL";
             case GET_TOOL: return "TAKE HERE";
-            case MAKE_REJUVENATION: return objective.getTarget() == TargetKind.NONE ? "MIX HERE" : "SUPPLIES HERE";
+            case MAKE_REJUVENATION: return objective.getTarget() == TargetKind.NONE ? "MIX" : "SUPPLIES";
             case ENTER: return "ENTER HERE";
             case RESTORE_WARMTH: return "SAFE AREA";
             default: return "STAND HERE";
         }
     }
-    private void label(Graphics2D graphics, Polygon tile, String text, Color color)
+    static WorldPoint standingPoint(WintertodtSnapshot s, WintertodtObjective o, List<WorldPoint> path)
     {
-        Graphics2D g = (Graphics2D) graphics.create();
-        try
-        {
-            g.setFont(g.getFont().deriveFont(java.awt.Font.BOLD, g.getFont().getSize2D() + 1));
-            java.awt.Rectangle bounds = tile.getBounds();
-            TextComponent label = new TextComponent(); label.setText(text); label.setColor(color);
-            label.setPosition(new java.awt.Point((int) bounds.getCenterX() - g.getFontMetrics().stringWidth(text) / 2,
-                (int) bounds.getCenterY() - 7));
-            label.render(g);
-        }
-        finally { g.dispose(); }
+        if (o.getTarget() == TargetKind.NONE && s.getCurrentActivity() != PlayerActivity.MOVING
+            && (o.getType() == ObjectiveType.FLETCH || o.getType() == ObjectiveType.MAKE_REJUVENATION))
+        { return s.getPlayerLocation(); }
+        return path.isEmpty() ? null : path.get(path.size() - 1);
     }
 }

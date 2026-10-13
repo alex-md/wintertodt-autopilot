@@ -19,8 +19,8 @@ public final class WintertodtOverlayPreview
         graphics.setColor(new Color(34, 38, 41)); graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
         graphics.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13)); graphics.setColor(Color.LIGHT_GRAY);
         graphics.drawString("Synthetic overlay preview - constructed snapshots, not a live game", 20, 25);
-        WintertodtSnapshot base = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).points(425).warmth(78)
-            .firemakingLevel(85).warmClothingCount(4).rejuvenationDoses(3).wintertodtEnergy(64).brumaRoots(17).freeSlots(7).localBrazierState(BrazierState.LIT)
+        WintertodtSnapshot base = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).points(425).warmth(78).rawWarmth(780)
+            .estimatedSecondsLeft(145).roundBudgetSeconds(127).brazierDistance(0).firemakingLevel(85).warmClothingCount(4).rejuvenationDoses(3).wintertodtEnergy(64).brumaRoots(17).freeSlots(7).localBrazierState(BrazierState.LIT)
             .localPyromancerKnown(true).workingCorner(WorkingCorner.SOUTHEAST).currentActivity(PlayerActivity.FLETCHING).build();
         WintertodtObjective fletch = new WintertodtObjective(ObjectiveType.FLETCH, "Fletch 17 roots", "batch_fletch", TargetKind.NONE, 17, false, ItemID.KNIFE, ItemID.WINT_BRUMA_ROOT);
         render(graphics, 20, 55, base, fletch, new WintertodtAutopilotConfig() { });
@@ -37,12 +37,12 @@ public final class WintertodtOverlayPreview
         WintertodtHighlight.routeEdge(graphics, b, c, color, 1);
         Polygon tile = new Polygon(new int[]{160, 210, 260, 210}, new int[]{615, 590, 615, 640}, 4);
         WintertodtHighlight.tile(graphics, tile, color, 1, true);
-        graphics.setColor(Color.WHITE); graphics.drawString("STAND HERE", 165, 580);
+        WintertodtActionLabelOverlay.draw(graphics, tile.getBounds(), new Rectangle(0, 0, 920, 700), "FLETCH HERE", color);
         graphics.drawString("Inventory: normal", 350, 505);
         WintertodtHighlight.inventory(graphics, new Rectangle(350, 525, 45, 40), color, 1);
         graphics.setColor(Color.WHITE); graphics.drawString("Knife", 355, 550);
         graphics.drawString("Restart pulse: dim / bright", 560, 505);
-        WintertodtHighlight.inventory(graphics, new Rectangle(565, 525, 45, 40), color, .7f);
+        WintertodtHighlight.inventory(graphics, new Rectangle(565, 525, 45, 40), color, .25f);
         WintertodtHighlight.inventory(graphics, new Rectangle(640, 525, 45, 40), color, 1);
         graphics.setColor(Color.WHITE); graphics.drawString("Roots", 569, 550); graphics.drawString("Roots", 644, 550);
         graphics.dispose();
@@ -57,6 +57,7 @@ public final class WintertodtOverlayPreview
         when(plugin.getSnapshot()).thenReturn(snapshot); when(plugin.getObjective()).thenReturn(objective);
         WintertodtOverlay overlay = new WintertodtOverlay(plugin, config);
         Graphics2D local = (Graphics2D) graphics.create(); local.translate(x, y); local.setFont(FontManager.getRunescapeFont());
-        overlay.render(local); local.dispose();
+        // RuneLite's panel caches child dimensions for its next frame.
+        overlay.render(local); overlay.render(local); overlay.render(local); local.dispose();
     }
 }

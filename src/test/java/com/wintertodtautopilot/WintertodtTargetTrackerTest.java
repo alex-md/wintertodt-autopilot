@@ -67,4 +67,35 @@ public class WintertodtTargetTrackerTest
         assertNull(tracker.target(TargetKind.PYROMANCER, WorkingCorner.NORTHEAST.location()));
         tracker.reset(); assertNull(tracker.target(TargetKind.PYROMANCER, WorkingCorner.SOUTHWEST.location()));
     }
+    @Test public void fletchingArrivalUsesBrazierFootprintAndRejectsDiagonalTile() throws Exception
+    {
+        Client client = mock(Client.class); WorldView view = mock(WorldView.class);
+        WintertodtObjectTracker tracker = new WintertodtObjectTracker();
+        TrackerTestSupport.inject(tracker, "client", client);
+        GameObject brazier = mock(GameObject.class); Player player = mock(Player.class);
+        ObjectComposition definition = mock(ObjectComposition.class);
+        when(brazier.getId()).thenReturn(ObjectID.WINT_BRAZIER_LIT);
+        when(brazier.getWorldLocation()).thenReturn(WorkingCorner.SOUTHEAST.location());
+        when(client.getObjectDefinition(ObjectID.WINT_BRAZIER_LIT)).thenReturn(definition);
+        when(definition.getId()).thenReturn(ObjectID.WINT_BRAZIER_LIT);
+        net.runelite.api.coords.LocalPoint objectTile = net.runelite.api.coords.LocalPoint.fromScene(20, 20, view);
+        net.runelite.api.coords.LocalPoint adjacent = net.runelite.api.coords.LocalPoint.fromScene(22, 20, view);
+        net.runelite.api.coords.LocalPoint diagonal = net.runelite.api.coords.LocalPoint.fromScene(22, 22, view);
+        net.runelite.api.coords.LocalPoint distant = net.runelite.api.coords.LocalPoint.fromScene(30, 20, view);
+        when(brazier.getLocalLocation()).thenReturn(objectTile);
+        when(brazier.getSceneMinLocation()).thenReturn(new Point(20, 20));
+        when(brazier.getSceneMaxLocation()).thenReturn(new Point(21, 21));
+        when(player.getWorldLocation()).thenReturn(WorkingCorner.SOUTHEAST.location());
+        tracker.select(WorkingCorner.SOUTHEAST.location(), WorkingCorner.SOUTHEAST, null);
+        tracker.add(brazier);
+        when(player.getLocalLocation()).thenReturn(adjacent);
+        assertEquals(0, tracker.brazierDistance(player));
+        when(player.getLocalLocation()).thenReturn(diagonal);
+        assertEquals(1, tracker.brazierDistance(player));
+        when(player.getLocalLocation()).thenReturn(distant);
+        assertEquals(8, tracker.brazierDistance(player));
+        tracker.remove(brazier);
+        assertEquals(-1, tracker.brazierDistance(player));
+    }
+
 }

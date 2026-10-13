@@ -22,7 +22,7 @@ Status: **not performed**. Use a mass world before publishing or adding Solo. Ru
 - [ ] Complete three consecutive Balanced rounds following only the current instruction.
 - [ ] Confirm cold interrupts fletching/feeding and chopping remains correctly detected.
 - [ ] Break the brazier while chopping: the chopping objective stays active; finish the batch before maintenance guidance.
-- [ ] Cold interrupts fletching, feeding, lighting or mixing: relevant items/objects/standing tile gently pulse with RESUME. Restart or walk to the target: verify pulsing clears.
+- [ ] Cold interrupts fletching, feeding, lighting or mixing: relevant items/objects/standing tile visibly pulse with RESUME. Restart or walk to the target: verify pulsing clears.
 - [ ] Interrupt fletching with repair and Warmth restoration; confirm the same batch resumes.
 - [ ] Test XP, Points / Rewards and Low Attention; confirm materially different batch/fletching behavior.
 - [ ] Test projected points near 500 and 1,000 without redundant gathering before feeding.
@@ -44,3 +44,38 @@ Status: **not performed**. Use a mass world before publishing or adding Solo. Ru
 - [ ] Record decision-change reasons and timing mismatches. Tune heuristics only from observed rounds.
 
 Do not mark these checks complete from unit tests. Solo energy stabilization remains separate advanced work. Collision-aware paths require the live checks above.
+
+
+## Sidebar, pause and finish forecast
+
+- [ ] Open the brazier sidebar icon before entering Wintertodt. Supply observations show unknown rather than missing.
+- [ ] Change strategy, goal, fletching mode and corner in the sidebar; confirm the plugin settings reflect them, and vice versa. Re-enabling retains these choices.
+- [ ] Pause while an arrow/path is visible; verify overlays, highlights and owned arrows clear and notifications stop. Resume restores current guidance. Check hopping/loading while paused.
+- [ ] Watch the finish estimate during a mass round; compare observed finishing time to the forecast and usable budget. Record lit braziers, energy and any abrupt pace change.
+- [ ] Confirm a stalled drain/brazier change removes the stale forecast and eventually relearns it. Missing HUD observations do not display a false zero countdown.
+- [ ] With roots held near the end, confirm chopping stops soon enough to walk and feed; test both roots-only and fletching strategies.
+- [ ] Confirm a partial timed fletching batch turns into feeding when its requested count is completed or the available time shrinks.
+- [ ] Confirm normal fletching routes from the roots to the adjacent brazier tile before highlighting knife/roots; test all four corners and a broken/unlit brazier.
+- [ ] Check sidebar text wrapping and scrolling at RuneLite's standard width and at UI scaling settings.
+
+
+## Follow-up checks from initial live feedback
+
+- [ ] At or below the configured restore threshold with a potion held, guidance says "Drink rejuvenation potion" and highlights its dose variant, even when food is also held. Compare displayed Warmth to the game HUD; record raw Warmth from debug mode if they disagree.
+- [ ] An extinguished brazier while feeding produces a visible 1.2-second border pulse, even without an interruption message. Relighting stops the pulse and takes priority over empty potion reserves.
+- [ ] Repairs, urgent feeding, low Warmth and inventory blocking produce attention cues; already performing the corresponding action settles them. Disabling attention pulses removes the animation.
+- [ ] With only a few roots and roughly forty usable seconds remaining, guidance does not force an immediate feeding trip. With at least 500 points and only time for a tiny new batch, reward-oriented strategies avoid another trip unless it could reach the next reward threshold; Firemaking XP mode still uses every root that fits.
+- [ ] Observe predictions through ordinary energy bursts and changes between three/four lit braziers; they should retain a learned pace rather than flicker back to learning. Sustained acceleration should shorten the estimate gradually.
+
+
+## Foreground callouts and contrast
+
+- [ ] In a crowded mass world, all action callouts remain readable in front of actors and are offset beside their marked tile. Check fletching, chopping, feeding, repairs, relighting and supplies.
+- [ ] Near viewport edges, the callout switches sides or clamps inside the game area. It must not spill onto chat, inventory or the sidebar.
+- [ ] Teal normal highlights remain visible against snow and stone. Orange/red attention colors and border pulses retain their existing behavior.
+- [ ] Southwest chopping uses the ordinary reachable interaction tile again; there is no fixed safespot setting or route.
+
+
+- [ ] In Firemaking XP mode at 8–10% energy, relight, then verify guidance chops a small viable batch rather than declaring the round finished. After feeding, it should offer another batch if at least one additional root fits.
+- [ ] During a temporary loss of the forecast after relighting, Firemaking XP mode continues with its small-batch fallback; at truly imminent energy with no estimate, it still waits.
+- [ ] Teal outlines have subtle feathering, while route cores remain thin and urgent colors/pulses stay distinct.

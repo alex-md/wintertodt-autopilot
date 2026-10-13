@@ -36,8 +36,10 @@ public class WintertodtInventoryTrackerTest
         WintertodtSnapshot s = b.build();
         assertEquals(3, s.getBrumaRoots()); assertEquals(2, s.getBrumaKindling()); assertEquals(23, s.getFreeSlots());
         assertTrue(s.isHasKnife()); assertTrue(s.isHasHammer()); assertTrue(s.isHasBrumaTorch());
-        assertEquals(1, s.getFoodCount()); assertEquals(ItemID.CAKE, s.getWarmthItem()); assertEquals(1, s.getRejuvenationDoses());
+        assertEquals(1, s.getFoodCount()); assertEquals(ItemID.WINT_POTION1, s.getWarmthItem()); assertEquals(1, s.getRejuvenationDoses());
         change.setTheoretical(3); tracker.fill(b); assertEquals(ItemID.WINT_POTION1, b.build().getWarmthItem());
+        when(bag.getItems()).thenReturn(new Item[]{new Item(ItemID.CAKE, 1)});
+        change.setTheoretical(4); tracker.fill(b); assertEquals(ItemID.CAKE, b.build().getWarmthItem());
         when(cake.getNote()).thenReturn(1); change.setTheoretical(20); tracker.fill(b); assertEquals(0, b.build().getFoodCount());
     }
 
