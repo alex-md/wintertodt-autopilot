@@ -34,70 +34,56 @@ public class WintertodtSceneOverlay extends Overlay
     {
         WintertodtObjective o = plugin.getObjective();
         WintertodtSnapshot s = plugin.getSnapshot();
-        if (plugin.isPaused() || o == null || s.getRoundState() == RoundState.OUTSIDE) { return null; }
+        if (plugin.isPaused() || o == null || s.getRoundState() == RoundState.OUTSIDE
+            || WintertodtGuidance.performing(s, o)) { return null; }
         Color color = WintertodtOverlay.color(o);
         float strength = WintertodtHighlight.strength(s, o, config.pulseInterruptions());
         if (config.highlightTarget())
         {
             NPC npc = plugin.getTargetNpc(); TileObject object = plugin.getTargetObject();
             int width = config.pulseInterruptions() && WintertodtHighlight.needsAttention(s, o)
-                ? Math.round(1 + 5 * strength) : 2;
+                ? Math.round(1 + 5 * strength) : WintertodtGuidance.isSupplyTarget(o) ? 4 : 2;
             Color outline = WintertodtHighlight.alpha(color, (int) (255 * strength));
             if (npc != null) { outlines.drawOutline(npc, width, outline, 3); }
             else if (object != null) { outlines.drawOutline(object, width, outline, 3); }
         }
-        List<WorldPoint> path = plugin.getPath();
-        if (config.showPath())
+        if (!config.showPath() && !config.highlightStandingTiles()) { return null; }
+        // Isolate the clip: paths and floor markers must never paint over the UI.
+        Graphics2D floor = (Graphics2D) graphics.create();
+        try
         {
-            Point previous = null;
-            // Only join validated tile edges; do not bridge missing projections.
-            for (WorldPoint step : path)
+            floor.clip(new java.awt.Rectangle(client.getViewportXOffset(), client.getViewportYOffset(),
+                client.getViewportWidth(), client.getViewportHeight()));
+            List<WorldPoint> path = plugin.getPath();
+            if (config.showPath())
             {
-                LocalPoint local = LocalPoint.fromWorld(client, step);
-                Point next = local == null ? null : Perspective.localToCanvas(client, local, step.getPlane());
-                if (previous != null && next != null) { WintertodtHighlight.routeEdge(graphics, previous, next, color, strength); }
-                previous = next;
+                Point previous = null;
+                // Only join validated tile edges; do not bridge missing projections.
+                for (WorldPoint step : path)
+                {
+                    LocalPoint local = LocalPoint.fromWorld(client, step);
+                    Point next = local == null ? null : Perspective.localToCanvas(client, local, step.getPlane());
+                    if (previous != null && next != null) { WintertodtHighlight.routeEdge(floor, previous, next, color, strength); }
+                    previous = next;
+                }
+            }
+            if (config.highlightStandingTiles())
+            {
+                WorldPoint destination = standingPoint(s, o, path);
+                Polygon tile = destination == null ? null : tile(destination);
+                if (tile != null)
+                {
+                    WintertodtHighlight.tile(floor, tile, color, strength, true);
+                }
             }
         }
-        if (config.highlightStandingTiles())
-        {
-            // Breadcrumbs provide floor context without painting every tile in the scene.
-            for (int i = 3; i < path.size() - 1; i += 4)
-            {
-                Polygon tile = tile(path.get(i));
-                if (tile != null) { WintertodtHighlight.tile(graphics, tile, color, strength, false); }
-            }
-            WorldPoint destination = standingPoint(s, o, path);
-            Polygon tile = destination == null ? null : tile(destination);
-            if (tile != null)
-            {
-                WintertodtHighlight.tile(graphics, tile, color, strength, true);
-            }
-        }
+        finally { floor.dispose(); }
         return null;
     }
     private Polygon tile(WorldPoint point)
     {
         LocalPoint local = LocalPoint.fromWorld(client, point);
         return local == null ? null : Perspective.getCanvasTilePoly(client, local);
-    }
-    static String standingLabel(WintertodtObjective objective)
-    {
-        if ("fletch_at_brazier".equals(objective.getReason())) { return "FLETCH HERE"; }
-        switch (objective.getType())
-        {
-            case CHOP: return "CHOP";
-            case FEED: return "FEED";
-            case FLETCH: return "FLETCH";
-            case REPAIR: return "REPAIR HERE";
-            case LIGHT: return "LIGHT";
-            case HEAL_PYROMANCER: return "HEAL";
-            case GET_TOOL: return "TAKE HERE";
-            case MAKE_REJUVENATION: return objective.getTarget() == TargetKind.NONE ? "MIX" : "SUPPLIES";
-            case ENTER: return "ENTER HERE";
-            case RESTORE_WARMTH: return "SAFE AREA";
-            default: return "STAND HERE";
-        }
     }
     static WorldPoint standingPoint(WintertodtSnapshot s, WintertodtObjective o, List<WorldPoint> path)
     {

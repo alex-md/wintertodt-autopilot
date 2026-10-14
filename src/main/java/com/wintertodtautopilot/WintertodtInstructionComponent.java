@@ -11,15 +11,19 @@ final class WintertodtInstructionComponent implements LayoutableRenderableEntity
 {
     private final String text;
     private final Color color;
+    private final Font font;
     @Setter private Point preferredLocation = new Point();
     @Setter private Dimension preferredSize = new Dimension(260, 0);
     @Getter private final Rectangle bounds = new Rectangle();
-    WintertodtInstructionComponent(String text, Color color) { this.text = text; this.color = color; }
+    WintertodtInstructionComponent(String text, Color color)
+    { this(text, color, new Font(Font.SANS_SERIF, Font.BOLD, 14)); }
+    WintertodtInstructionComponent(String text, Color color, Font font)
+    { this.text = text; this.color = color; this.font = font; }
     @Override
     public Dimension render(Graphics2D graphics)
     {
         Font old = graphics.getFont();
-        graphics.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        graphics.setFont(font);
         try
         {
             FontMetrics metrics = graphics.getFontMetrics();

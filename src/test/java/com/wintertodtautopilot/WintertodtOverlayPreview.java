@@ -14,7 +14,7 @@ public final class WintertodtOverlayPreview
 {
     public static void main(String[] args) throws Exception
     {
-        BufferedImage image = new BufferedImage(920, 700, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage image = new BufferedImage(1220, 1120, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = image.createGraphics();
         graphics.setColor(new Color(34, 38, 41)); graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
         graphics.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13)); graphics.setColor(Color.LIGHT_GRAY);
@@ -27,24 +27,54 @@ public final class WintertodtOverlayPreview
         render(graphics, 320, 55, base.toBuilder().interrupted(true).playerIdle(true).currentActivity(PlayerActivity.IDLE).build(),
             new WintertodtObjective(ObjectiveType.FLETCH, "Continue fletching", "batch_fletch", TargetKind.NONE, 17, false, ItemID.KNIFE, ItemID.WINT_BRUMA_ROOT),
             new WintertodtAutopilotConfig() { });
-        render(graphics, 620, 55, base, fletch, new WintertodtAutopilotConfig() { @Override public boolean debug() { return true; } });
+        render(graphics, 920, 55, base, fletch, new WintertodtAutopilotConfig() { @Override public boolean debug() { return true; } });
+        render(graphics, 620, 55, base.toBuilder().warmth(15).build(),
+            new WintertodtObjective(ObjectiveType.RESTORE_WARMTH, "Drink rejuvenation potion", "warmth_low", TargetKind.NONE, 1, true),
+            new WintertodtAutopilotConfig() { });
+        render(graphics, 20, 300, base, fletch,
+            new WintertodtAutopilotConfig() { @Override public boolean pauseGuidance() { return true; } });
+        render(graphics, 320, 300, base, fletch,
+            new WintertodtAutopilotConfig() { @Override public OverlayDetail overlayDetail() { return OverlayDetail.MINIMAL; } });
         graphics.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13)); graphics.setColor(Color.LIGHT_GRAY);
-        graphics.drawString("Synthetic walking path, destination tile and inventory highlight samples", 20, 470);
+        graphics.drawString("Optional walking cues (off by default) and inventory highlight samples", 20, 630);
         Color color = WintertodtOverlay.color(fletch);
-        net.runelite.api.Point a = new net.runelite.api.Point(60, 550), b = new net.runelite.api.Point(210, 550),
-            c = new net.runelite.api.Point(210, 615);
+        net.runelite.api.Point a = new net.runelite.api.Point(60, 710), b = new net.runelite.api.Point(210, 710),
+            c = new net.runelite.api.Point(210, 775);
         WintertodtHighlight.routeEdge(graphics, a, b, color, 1);
         WintertodtHighlight.routeEdge(graphics, b, c, color, 1);
-        Polygon tile = new Polygon(new int[]{160, 210, 260, 210}, new int[]{615, 590, 615, 640}, 4);
+        Polygon tile = new Polygon(new int[]{160, 210, 260, 210}, new int[]{775, 750, 775, 800}, 4);
         WintertodtHighlight.tile(graphics, tile, color, 1, true);
-        WintertodtActionLabelOverlay.draw(graphics, tile.getBounds(), new Rectangle(0, 0, 920, 700), "FLETCH HERE", color);
-        graphics.drawString("Inventory: normal", 350, 505);
-        WintertodtHighlight.inventory(graphics, new Rectangle(350, 525, 45, 40), color, 1);
-        graphics.setColor(Color.WHITE); graphics.drawString("Knife", 355, 550);
-        graphics.drawString("Restart pulse: dim / bright", 560, 505);
-        WintertodtHighlight.inventory(graphics, new Rectangle(565, 525, 45, 40), color, .25f);
-        WintertodtHighlight.inventory(graphics, new Rectangle(640, 525, 45, 40), color, 1);
-        graphics.setColor(Color.WHITE); graphics.drawString("Roots", 569, 550); graphics.drawString("Roots", 644, 550);
+        WintertodtSnapshot feeding = base.toBuilder().currentActivity(PlayerActivity.FEEDING).build();
+        WintertodtObjective feed = new WintertodtObjective(ObjectiveType.FEED, "Feed", "batch_feed",
+            TargetKind.BRAZIER, 17, false, ItemID.WINT_BRUMA_ROOT);
+        graphics.drawString("Already feeding: no highlight", 350, 665);
+        if (WintertodtHighlight.inventoryItem(feeding, feed, ItemID.WINT_BRUMA_ROOT))
+        { WintertodtHighlight.inventory(graphics, new Rectangle(350, 685, 45, 40), color, 1); }
+        graphics.setColor(Color.WHITE); graphics.drawString("Roots", 355, 710);
+        graphics.drawString("Brazier out: fuel pulses (dim / bright)", 560, 665);
+        WintertodtSnapshot stopped = feeding.toBuilder().localBrazierState(BrazierState.UNLIT).build();
+        WintertodtObjective light = new WintertodtObjective(ObjectiveType.LIGHT, "Relight", "brazier_unlit",
+            TargetKind.BRAZIER, 0, false, ItemID.TINDERBOX);
+        if (WintertodtHighlight.inventoryItem(stopped, light, ItemID.WINT_BRUMA_ROOT))
+        {
+            WintertodtHighlight.inventory(graphics, new Rectangle(565, 685, 45, 40), color,
+                WintertodtHighlight.strengthAt(stopped, light, true, 900_000_000L));
+            WintertodtHighlight.inventory(graphics, new Rectangle(640, 685, 45, 40), color,
+                WintertodtHighlight.strengthAt(stopped, light, true, 300_000_000L));
+        }
+        graphics.setColor(Color.WHITE); graphics.drawString("Roots", 569, 710); graphics.drawString("Roots", 644, 710);
+        graphics.setColor(Color.LIGHT_GRAY);
+        graphics.drawString("Supply instructions appear in the main panel only - no floating scene labels", 20, 855);
+        TargetKind[] supplies = {TargetKind.HAMMER_CRATE, TargetKind.POTION_CRATE, TargetKind.HERBS, TargetKind.BREWMA};
+        for (int i = 0; i < supplies.length; i++)
+        {
+            int count = i == 0 ? 1 : 2;
+            WintertodtObjective supply = new WintertodtObjective(i == 0 ? ObjectiveType.GET_TOOL : ObjectiveType.MAKE_REJUVENATION,
+                WintertodtGuidance.supplyInstruction(supplies[i], count), "prepare_supply", supplies[i], count, false);
+            render(graphics, 20 + i * 300, 880, base.toBuilder().roundState(RoundState.COUNTDOWN)
+                .currentActivity(PlayerActivity.IDLE).points(0).brumaRoots(0).secondsToStart(45).build(), supply,
+                new WintertodtAutopilotConfig() { });
+        }
         graphics.dispose();
         Path path = Path.of("build", "preview", "overlays.png"); Files.createDirectories(path.getParent());
         ImageIO.write(image, "png", path.toFile());
@@ -54,6 +84,7 @@ public final class WintertodtOverlayPreview
     {
         WintertodtAutopilotPlugin plugin = mock(WintertodtAutopilotPlugin.class);
         when(plugin.getPotionTargetDoses()).thenReturn(4);
+        when(plugin.isPaused()).thenReturn(config.pauseGuidance());
         when(plugin.getSnapshot()).thenReturn(snapshot); when(plugin.getObjective()).thenReturn(objective);
         WintertodtOverlay overlay = new WintertodtOverlay(plugin, config);
         Graphics2D local = (Graphics2D) graphics.create(); local.translate(x, y); local.setFont(FontManager.getRunescapeFont());

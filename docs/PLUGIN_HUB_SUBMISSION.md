@@ -1,54 +1,52 @@
-# Plugin Hub submission checks
+# Plugin Hub release checks
 
-Checked October 13, 2026, for the initial Wintertodt Autopilot submission.
+Release: **0.1.1**, reviewed 13 October 2026. Updates the published manifest's source commit `79b527e9da79b9788f4ac6bc6c227c5be6ecc883`.
 
-## Listing and packaging
+## Final changes
 
-- Public source: https://github.com/alex-md/wintertodt-autopilot
-- Name and entry point agree between `runelite-plugin.properties` and `@PluginDescriptor`.
-- Description explicitly says that the player performs the clicks.
-- Search tags cover Wintertodt / WT, Firemaking / FM, Woodcutting, Fletching, skilling, minigame, helper, guide, brazier, bruma, warmth, points, rewards, and mass.
-- `build=standard` is explicit. No extra runtime dependencies or custom production build steps are needed.
-- Version is explicitly `0.1.0` for standard builds.
-- Root `icon.png` is a valid transparent 48 × 48 PNG, under the Hub's 256 KiB limit. The README has a larger copy; the sidebar uses a packaged 24 × 24 copy.
-- The README covers setup, controls, strategies, limitations, previews, and issue reporting. It does not claim the plugin is already available in the Hub.
-- BSD 3-Clause project license and the adapted RuneLite animation table's BSD attribution are retained. Both notices are packaged under `src/main/resources/META-INF`, including when the Hub replaces the local build script.
-- Resource loading uses classpath resources and works with jar packaging.
+- Removed the custom sidebar and floating scene-label overlay, including their classes, resources and previews.
+- Controls use RuneLite's built-in settings. Pause is saved and suppresses guidance and notifications, including emergency warmth alerts.
+- Normal guidance shows the action, observed progress, warmth and reward progress. Supply instructions name the item and remaining quantity.
+- Matching activity suppresses scene/inventory cues and owned arrows/routes. Interrupted fuel can pulse while relighting or repairs are needed; warmth retains priority.
+- Highlights use flame orange-yellow and gold. Walking paths and standing tiles default off; intermediate breadcrumb squares are removed. Existing saved preferences are retained.
+- Updated author metadata to `alex-md` and shortened the README. Solo mode remains research only.
 
-## Build verification
+## Packaging and compatibility
 
-- `./gradlew clean build previewOverlay previewSidebar --no-daemon --console=plain` passed.
-- After the listing, resources, and sidebar icon changed, `./gradlew build previewSidebar --no-daemon --console=plain` passed: **112 tests, zero failures, errors, or skipped tests**.
-- Production sources compiled successfully with the official Hub `standard-build.gradle`, its Lombok 1.18.30 dependency, and the Hub's current RuneLite target, **1.13.1**. The version override was restricted to `client`, `runelite-api`, and `http-api`, matching the Hub initializer.
-- Inspected jar contents: plugin entry point, warmth registry, sidebar icon, project license, and third-party notices are present. Plugin bytecode targets Java 11 (class version 55).
-- Panel previews were generated and visually inspected. These are constructed states, not evidence of live gameplay.
-- `git diff --check` passed before submission.
+- Public source: [alex-md/wintertodt-autopilot](https://github.com/alex-md/wintertodt-autopilot).
+- Plugin name/entry point agree between metadata and `@PluginDescriptor`; description states that the player performs the clicks.
+- `version=0.1.1`, `build=standard`; no new runtime dependencies or custom production build steps.
+- Java 11 bytecode, built with Java 17 against RuneLite 1.13.1, matching the Hub's `runelite.version` at review time.
+- Root icon is a transparent 48 × 48 PNG below 256 KiB. Packaged warm-clothing data and both license notices are required in the jar.
+- Official Hub standard-build compatibility is checked separately using its Lombok 1.18.30 dependency and the Hub's RuneLite target. This checks compilation/packaging, not the Hub's API scanner or reviewer approval.
 
-The template build checks compilation and packaging; it does not replace the Hub's own API scanner, CI, or rule review. The Hub manifest must reference the full 40-character hash of the pushed source commit.
+## Validation
 
-## Source review scope
+The final release review runs `./gradlew clean build previewOverlay --no-daemon --console=plain`, inspects the synthetic preview and clean jar, checks license/resource packaging and bytecode, and runs `git diff --check` before publishing the source commit. Final results:
 
-Production code observes client state and displays guidance, highlights, paths, a sidebar, and notifications. All gameplay actions are performed by the player. The observed menu-click event tracks player activity; the overlay menu entry opens plugin configuration.
+- Clean local build and preview generation passed: **116 tests, zero failures, errors or skipped tests**.
+- The final production sources compiled and packaged with the official standard-build template, Lombok 1.18.30 and the Hub's RuneLite 1.13.1 target in a separate temporary project.
+- Clean jar inspection confirmed required resources/notices, Java 11 bytecode, and absence of the removed sidebar/floating-label classes.
+- License copies match their root originals, icon dimensions/size are valid, README local links resolve, and `git diff --check` passed.
+- Reviewed the final synthetic panel/highlight preview. It is not a live gameplay screenshot.
 
-The production source scan found no reflection, native code, subprocess execution, runtime code downloads, networking, filesystem writes, synthesized mouse/keyboard input, chat insertion, menu swapping, or server-action calls. The warmth registry reads a bundled resource, not a filesystem path. Configuration persistence uses RuneLite's `ConfigManager`. The hint arrow only replaces an unused arrow and clears it while still owned by this plugin.
+The user supplied live screenshots and iterative feedback on supplies and crowded-world presentation. The full [live checklist](LIVE_VALIDATION.md) is still incomplete; unit tests and synthetic previews are not substitutes for full live acceptance. Unverified checks remain unchecked.
 
-Walking cues lead to interaction targets. They do not predict attacks, mark attack impact locations, or choose positions to dodge boss mechanics. RuneLite reviewers still need to assess the dynamic guidance, paths, and interaction tiles under their game-rule policy. This document does not claim prior approval from RuneLite or Jagex.
+## Source review
 
-## Remaining checks
+Production code observes state and displays guidance, highlights and notifications. Observed menu clicks track player activity; the overlay menu only opens configuration. There are no synthesized game actions, reflection, subprocesses, runtime downloads, network requests, filesystem writes or modifications to other plugins' configuration. Bundled resources use classpath streams. Owned hint arrows respect existing arrows.
 
-The full [live validation checklist](LIVE_VALIDATION.md) is incomplete. Automated tests are not being counted as live acceptance. Corner mapping, HUD observations, interruption timing, crowded-world presentation, lifecycle behavior, and actual round pacing still need recorded in-game checks.
+Optional paths lead to interaction targets. They do not predict attacks or choose positions to dodge mechanics. The Hub's CI and maintainers still make the final compatibility and policy decisions.
 
-Hub CI and reviewer approval are external steps. Opening the submission PR does not make the plugin available to install; it needs to be accepted and merged.
+## Submission
 
-## Icon
+Update only `plugins/wintertodt-autopilot` in [runelite/plugin-hub](https://github.com/runelite/plugin-hub), keeping the repository URL and pinning the full 40-character hash of the pushed source commit. The upstream Hub file was checked before preparing the update; no open update PR by this author was found at review time.
 
-Original artwork generated with the built-in image tool, then resized for the Hub, README, and sidebar. The brief was a compact dark iron brazier with orange/gold flame and icy cyan rim accents, a strong pixel-art silhouette readable at 48 × 48, transparent background, and no text or logos.
+## References
 
-## Requirements checked
+- [Hub submission and update instructions](https://github.com/runelite/plugin-hub)
+- [Official standard build](https://github.com/runelite/plugin-hub-tooling/blob/master/package/src/main/resources/net/runelite/pluginhub/packager/standard-build.gradle)
+- [Rejected features and APIs](https://github.com/runelite/runelite/wiki/Rejected-or-Rolled-Back-Features)
+- [Plugin Hub review scope](https://github.com/runelite/runelite/wiki/Plugin-Hub-Review)
 
-- [Hub authoring, metadata, icon, build, licensing, and submission instructions](https://github.com/runelite/plugin-hub)
-- [Official standard build template](https://github.com/runelite/plugin-hub-tooling/blob/master/package/src/main/resources/net/runelite/pluginhub/packager/standard-build.gradle)
-- [Hub packager validation](https://github.com/runelite/plugin-hub-tooling/blob/master/package/src/main/java/net/runelite/pluginhub/packager/Plugin.java)
-- [Rejected features and forbidden APIs](https://github.com/runelite/runelite/wiki/Rejected-or-Rolled-Back-Features)
-- [Jagex third-party client guidelines](https://secure.runescape.com/m=news/third-party-client-guidelines?oldschool=1)
-- [RuneLite's review scope](https://github.com/runelite/runelite/wiki/Plugin-Hub-Review)
+Original icon artwork was generated with the image tool. Project and adapted RuneLite animation-table attribution remain in `LICENSE`, `THIRD_PARTY_NOTICES` and the packaged copies under `META-INF`.

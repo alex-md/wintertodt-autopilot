@@ -1,6 +1,6 @@
 plugins { id 'java' }
 group = 'com.wintertodtautopilot'
-version = '0.1.0'
+version = '0.1.1'
 repositories {
     mavenLocal()
     maven { url = 'https://repo.runelite.net'; content { includeGroupByRegex('net\\.runelite.*') } }
@@ -30,11 +30,5 @@ tasks.register('run', JavaExec) {
 tasks.register('previewOverlay', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'com.wintertodtautopilot.WintertodtOverlayPreview'
-    jvmArgs '-Djava.awt.headless=true'
-}
-
-tasks.register('previewSidebar', JavaExec) {
-    classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'com.wintertodtautopilot.WintertodtSidebarPreview'
     jvmArgs '-Djava.awt.headless=true'
 }

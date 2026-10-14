@@ -4,90 +4,63 @@
 
 # Wintertodt Autopilot
 
-Wintertodt gets repetitive. Chop, fletch, feed, get interrupted, click again. This plugin keeps track of the round and shows you what to do next, with a highlight on the object or inventory item you need.
+Less thinking, more Wintertodt. Pick your goal and follow the highlighted action. The plugin handles the planning: supplies, warmth, when to fletch, and when to feed before the round ends.
 
-**You do every click.** Autopilot is the name of the guide. It doesn't move your character, click for you, or send game actions.
+Instructions stay in one movable panel. The highlighted target shows where to click.
 
-Built for mass worlds, with plans for Firemaking XP, points, or fewer task changes.
+You still do every click. The plugin doesn't play for you.
 
-## What you get
+## Get started
 
-- **One action at a time.** A clear instruction with a teal target highlight, inventory outlines, and optional walking cues.
-- **A reminder when you stop.** Interrupted actions show a Resume cue. Pulsing borders draw your attention to low warmth, repairs, relighting, and fuel that needs feeding.
-- **Warmth and supplies.** Guidance for tools, rejuvenation potions, drinking, and healing your local pyromancer. Potion reserves account for your Firemaking level, warm clothing, food, and the round.
-- **A plan for your points.** Batches adjust to your inventory and reward goal. The panel separates points you've earned from points still sitting in your inventory.
-- **Help finishing the round.** A finish estimate learns the recent energy drain and leaves time to walk and feed. If there's time for a smaller fletching batch, it'll suggest one.
-- **Controls close by.** Change your strategy, reward goal, fletching mode, and working brazier from the sidebar. Pause guidance whenever you want.
+1. Install **Wintertodt Autopilot** from RuneLite's Plugin Hub.
+2. Join a Wintertodt mass world.
+3. Leave the strategy on **Mass - Balanced**, with fletching and working brazier on **Automatic**.
+4. Follow the instruction and highlighted target. Missing tools or potions? It'll walk you through getting them.
 
-## Getting started
+All options are in RuneLite settings → **Wintertodt Autopilot**. No extra sidebar. Walking paths and floor markers are off by default. Right-click the overlay to open settings, or hold **Alt** to move it.
 
-The Plugin Hub submission is pending review. Until it's approved, use the developer build below.
+## What it does
 
-Once available in the Hub:
+- Shows one action at a time, with the target or inventory items highlighted.
+- Gets the highlights out of the way while you're working. Interrupted actions bring them back, with pulsing fuel when the brazier goes out.
+- Keeps track of warmth and guides potion prep, repairs, relighting, and pyromancer healing.
+- Adjusts batches around your reward goal and the time left in the round.
+- Keeps earned points separate from fuel you still need to feed.
 
-1. Open RuneLite's Plugin Hub, search **Wintertodt Autopilot**, and install it.
-2. Join a Wintertodt mass world and enable the plugin.
-3. Click the brazier icon in the sidebar. Start with **Mass - Balanced** and leave your working brazier on **Automatic**.
-4. Follow the current instruction. The plugin guides missing tool and potion preparation once you're inside the prison.
+## Pick your goal
 
-Hold **Alt** to move the in-game panel. Right-click the panel to open the plugin settings. You can turn off paths, standing tiles, inventory highlights, or the hint arrow individually, and choose Minimal, Normal, or Detailed panel views.
-
-## Pick your plan
-
-| Strategy | How it plays |
+| Strategy | What to expect |
 | --- | --- |
-| **Mass - Balanced** | Manageable batches, with enough fletching to work toward the next reward goal. A good place to start. |
-| **Mass - Firemaking XP** | Feeds roots directly by default. Uses small late-round batches when there's still time to chop and feed. |
-| **Mass - Points / Rewards** | Larger batches and kindling, aimed at reward thresholds. |
-| **Low Attention** | Fills available inventory space to reduce task changes. You still need to watch warmth and respond to interruptions. |
+| **Mass - Balanced** | Smaller batches, with enough fletching to work toward your reward goal. Start here. |
+| **Mass - Firemaking XP** | Feed roots directly and use small late-round batches when there's time. |
+| **Mass - Points / Rewards** | Larger batches and more kindling. |
+| **Low Attention** | Fill available inventory space for fewer task changes. |
 
-Fletching can follow the strategy, always be used, or be skipped. Late in the round, feeding may take priority. After you reach a fixed point goal, guidance continues toward the next 500-point threshold.
+Automatic fletching follows your strategy. You can override it in settings. Once you reach a fixed reward goal, guidance keeps working toward the next 500-point threshold.
 
-## A look at the panels
+## Keep in mind
 
-These previews use constructed game states to show the layout. They aren't in-game screenshots.
+Mass worlds only for now. [Solo mode is phase 2](docs/SOLO_MODE_RESEARCH.md).
 
-![Next-action panel, restart cue, debug view, and highlight styles](docs/images/overlay-preview.png)
+Finish times and potion reserves are estimates. You still need to watch the game and react to attacks. Walking cues don't dodge for you.
 
-The sidebar explains the current step, checks your supplies, and keeps your round progress and settings together.
+**Pause guidance pauses all notifications too, including low warmth.** Uncheck it in settings to resume. Your pause choice is saved across restarts.
 
-![Sidebar showing preparation, an ending round, and paused guidance](docs/images/sidebar-preview.png)
+## Bugs and feedback
 
-## A few things to know
+[Open an issue](https://github.com/alex-md/wintertodt-autopilot/issues) with what happened, what you expected, and your strategy. A screenshot helps. Enable **Debug overlay and logs** if you need the decision reason.
 
-This version is for mass worlds. Solo guidance isn't included.
+## Build locally
 
-Finish times and potion reserves are estimates. Round pace can change, and carried fuel only earns points once you feed it. Missing observations show as unknown instead of guessed values. Warm clothing and food detection may miss some items.
-
-Walking cues cover the loaded scene. They don't operate doors or avoid incoming attacks. You still need to react to the game yourself.
-
-**Pause guidance also pauses low-warmth notifications.** Resume from the sidebar when you're ready. Emergency warmth alerts are enabled by default; idle and other attention notifications are optional.
-
-The full [live validation checklist](docs/LIVE_VALIDATION.md) is still open. Automated checks cover the planner and presentation, but the remaining in-game checks need to be completed.
-
-## Bugs and suggestions
-
-[Open an issue](https://github.com/alex-md/wintertodt-autopilot/issues) with what happened and what you expected. Include your strategy, working corner, warmth, points, and round energy if you can. A screenshot of the panel helps. Turn on **Debug overlay and logs** if you need the decision reason.
-
-## Build it yourself
-
-Use **Java 17**. The source targets Java 11 and pins RuneLite **1.13.1** and Gradle **8.10**.
+Use Java 17. The project targets Java 11 and uses RuneLite 1.13.1.
 
 ```sh
 ./gradlew build
 ./gradlew run
 ```
 
-`run` opens RuneLite in developer mode with the plugin loaded. Search **Wintertodt Autopilot** in the settings. For Jagex accounts, follow RuneLite's [developer-client setup](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts).
+This launches RuneLite in developer mode with the plugin loaded. Jagex accounts need RuneLite's [developer-client setup](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts).
 
-The local jar is `build/libs/wintertodt-autopilot-0.1.0.jar`. Hub installation requires RuneLite's source review and approval.
+[Live validation checklist](docs/LIVE_VALIDATION.md) · [Research](docs/RESEARCH.md) · [Hub submission notes](docs/PLUGIN_HUB_SUBMISSION.md)
 
-To regenerate the panel previews:
-
-```sh
-./gradlew previewOverlay previewSidebar
-```
-
-See [research and API mapping](docs/RESEARCH.md) for implementation details and [submission checks](docs/PLUGIN_HUB_SUBMISSION.md) for the Hub requirements checked for this release.
-
-Licensed under [BSD 3-Clause](LICENSE). The adapted RuneLite animation table retains its attribution in [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES). Both notices are included in the plugin jar.
+By [alex-md](https://github.com/alex-md). Licensed under [BSD 3-Clause](LICENSE). Third-party attribution is in [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES).

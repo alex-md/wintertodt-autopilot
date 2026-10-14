@@ -18,14 +18,25 @@ public final class WintertodtGuidance
             && settings.getStrategy() != WintertodtStrategy.MASS_XP;
     }
 
-    public static String strategy(WintertodtStrategy strategy)
+    public static boolean isSupplyTarget(WintertodtObjective o)
     {
-        switch (strategy)
+        return o != null && (o.getType() == ObjectiveType.GET_TOOL
+            || o.getType() == ObjectiveType.MAKE_REJUVENATION && o.getTarget() != TargetKind.NONE);
+    }
+
+    public static String supplyInstruction(TargetKind target, int quantity)
+    {
+        int count = Math.max(1, quantity);
+        switch (target)
         {
-            case MASS_XP: return "Feeds roots directly by default to focus on Firemaking XP.";
-            case MASS_POINTS: return "Uses larger batches and kindling to work toward reward thresholds.";
-            case LOW_ATTENTION: return "Fills available inventory space to reduce changes of task.";
-            default: return "Uses manageable batches, fletching enough to reach the next reward goal.";
+            case AXE_CRATE: return "Take 1 axe";
+            case HAMMER_CRATE: return "Take 1 hammer";
+            case KNIFE_CRATE: return "Take 1 knife";
+            case TINDERBOX_CRATE: return "Take 1 tinderbox";
+            case POTION_CRATE: return "Take " + count + " unfinished potion" + (count == 1 ? "" : "s");
+            case HERBS: return "Pick " + count + " bruma herb" + (count == 1 ? "" : "s");
+            case BREWMA: return "Mix " + count + " potion" + (count == 1 ? "" : "s") + " with Brew'ma";
+            default: return null;
         }
     }
 
@@ -40,6 +51,50 @@ public final class WintertodtGuidance
             case ENDING: return "Round ending";
             default: return "Round in progress";
         }
+    }
+
+    /** Acknowledges an observed action so the player does not keep clicking it. */
+    public static boolean performing(WintertodtSnapshot s, WintertodtObjective o)
+    {
+        if (o == null) { return false; }
+        switch (o.getType())
+        {
+            case CHOP: return s.getCurrentActivity() == PlayerActivity.CHOPPING;
+            case FLETCH: return s.getCurrentActivity() == PlayerActivity.FLETCHING;
+            case FEED: return s.getCurrentActivity() == PlayerActivity.FEEDING;
+            case LIGHT: return s.getCurrentActivity() == PlayerActivity.LIGHTING;
+            case REPAIR: return s.getCurrentActivity() == PlayerActivity.REPAIRING;
+            case HEAL_PYROMANCER: return s.getCurrentActivity() == PlayerActivity.HEALING;
+            case RESTORE_WARMTH: return s.getCurrentActivity() == PlayerActivity.RESTORING_WARMTH;
+            case MAKE_REJUVENATION: return s.getCurrentActivity() == PlayerActivity.MAKING_POTION
+                && "mix_rejuvenation".equals(o.getReason());
+            default: return false;
+        }
+    }
+
+    public static String status(WintertodtSnapshot s, WintertodtObjective o)
+    {
+        if ("inventory_blocked".equals(o.getReason()) || "supply_inventory_blocked".equals(o.getReason()))
+        { return "ACTION NEEDED"; }
+        if (performing(s, o)) { return "IN PROGRESS"; }
+        if (WintertodtHighlight.needsRestart(s, o)) { return "RESUME"; }
+        if (o.isUrgent()) { return "ACT NOW"; }
+        return o.actionable() ? "NEXT ACTION" : "STAND BY";
+    }
+
+    public static String reassurance(WintertodtSnapshot s, WintertodtObjective o)
+    {
+        if (performing(s, o)) { return "Keep going. Guidance updates when you need to act."; }
+        if ("finish_feed".equals(o.getReason()) || "round_ending".equals(o.getReason()))
+        { return "Feed your fuel before the round ends."; }
+        if (o.getType() == ObjectiveType.WAIT || o.getType() == ObjectiveType.ROUND_COMPLETE)
+        { return "inventory_blocked".equals(o.getReason()) || "supply_inventory_blocked".equals(o.getReason())
+            ? "Free an inventory slot to continue." : "Guidance updates automatically. Watch for the next action."; }
+        if (o.getType() == ObjectiveType.FLETCH) { return "Use your knife on the highlighted roots."; }
+        if (o.getType() == ObjectiveType.RESTORE_WARMTH) { return "Restore warmth before continuing."; }
+        if ("mix_rejuvenation".equals(o.getReason()))
+        { return o.getTarget() == TargetKind.BREWMA ? "Brew'ma can mix the ingredients for you." : "Use a bruma herb on an unfinished potion."; }
+        return o.getTarget() == TargetKind.NONE ? "Follow the highlighted inventory items." : "Click the highlighted target.";
     }
 
     public static String explanation(WintertodtObjective o)

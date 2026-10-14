@@ -19,10 +19,11 @@ public class WintertodtInventoryOverlay extends WidgetItemOverlay
     public void renderItemOverlay(Graphics2D graphics, int itemId, WidgetItem item)
     {
         WintertodtObjective o = plugin.getObjective();
-        if (plugin.isPaused() || !config.highlightInventory() || o == null || !o.getItemIds().contains(itemId)) { return; }
+        WintertodtSnapshot s = plugin.getSnapshot();
+        if (plugin.isPaused() || !config.highlightInventory() || !WintertodtHighlight.inventoryItem(s, o, itemId)) { return; }
         Rectangle bounds = item.getCanvasBounds();
         if (bounds == null) { return; }
         WintertodtHighlight.inventory(graphics, bounds, WintertodtOverlay.color(o),
-            WintertodtHighlight.strength(plugin.getSnapshot(), o, config.pulseInterruptions()));
+            WintertodtHighlight.strength(s, o, config.pulseInterruptions()));
     }
 }

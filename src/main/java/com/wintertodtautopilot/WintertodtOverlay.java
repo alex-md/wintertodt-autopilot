@@ -11,6 +11,8 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 
 public class WintertodtOverlay extends OverlayPanel
 {
+    private static final Color FLAME = new Color(255, 180, 40);
+    private static final Color SUPPLY_FLAME = new Color(255, 210, 75);
     private final WintertodtAutopilotPlugin plugin;
     private final WintertodtAutopilotConfig config;
     @Inject
@@ -18,6 +20,7 @@ public class WintertodtOverlay extends OverlayPanel
     {
         super(plugin); this.plugin = plugin; this.config = config;
         setPosition(OverlayPosition.BOTTOM_LEFT);
+        panelComponent.setBackgroundColor(new Color(24, 29, 33, 235));
         panelComponent.setPreferredSize(new Dimension(260, 0));
         addMenuEntry(MenuAction.RUNELITE_OVERLAY_CONFIG, OverlayManager.OPTION_CONFIGURE, "Wintertodt Autopilot");
     }
@@ -30,36 +33,38 @@ public class WintertodtOverlay extends OverlayPanel
         if (plugin.isPaused())
         {
             panelComponent.getChildren().add(new WintertodtInstructionComponent("Guidance paused", Color.LIGHT_GRAY));
-            line("Resume", "Wintertodt sidebar", Color.LIGHT_GRAY);
+            body("Uncheck Pause guidance in plugin settings.");
+            body("All guidance and notifications are paused.");
             return super.render(graphics);
         }
         Color color = color(o);
+        Color textColor = o.getType() == ObjectiveType.RESTORE_WARMTH && o.isUrgent()
+            ? new Color(255, 145, 130) : color;
+        panelComponent.getChildren().add(LineComponent.builder()
+            .left(WintertodtGuidance.status(s, o)).leftColor(o.isUrgent() ? textColor : FLAME)
+            .leftFont(new Font(Font.SANS_SERIF, Font.BOLD, 11)).build());
+        panelComponent.getChildren().add(new WintertodtInstructionComponent(o.getInstruction(), o.isUrgent() ? textColor : Color.WHITE));
         if (config.overlayDetail() != OverlayDetail.MINIMAL)
         {
-            panelComponent.getChildren().add(LineComponent.builder().left("WINTERTODT AUTOPILOT").leftColor(Color.LIGHT_GRAY)
-                .leftFont(new Font(Font.SANS_SERIF, Font.BOLD, 11)).build());
+            body(WintertodtGuidance.reassurance(s, o));
         }
-        panelComponent.getChildren().add(new WintertodtInstructionComponent(
-            (WintertodtHighlight.needsRestart(s, o) ? "RESUME: " : s.isPlayerIdle() && o.actionable() ? "IDLE - " : "NEXT: ") + o.getInstruction(), o.isUrgent() ? color : Color.WHITE));
+        line("Warmth", percent(s.getWarmth()), s.getWarmth() >= 0 && s.getWarmth() <= config.warmthWarning() ? Color.ORANGE : Color.WHITE);
         int target = WintertodtGuidance.rewardTarget(config.pointGoal(), s.getPoints());
-        line("Points", number(s.getPoints()) + " / " + target, s.rewardThresholdReached() ? Color.GREEN : Color.WHITE);
+        line("Reward progress", number(s.getPoints()) + " / " + target, s.rewardThresholdReached() ? new Color(130, 200, 150) : Color.WHITE);
         if (config.overlayDetail() != OverlayDetail.MINIMAL)
         {
+            if (s.inventoryPoints() > 0) { line("Fuel to feed", "+" + s.inventoryPoints() + " pts", Color.LIGHT_GRAY); }
             if (s.active())
             {
-                line("Estimated finish", s.getEstimatedSecondsLeft() < 0 ? "Learning pace" : "~" + s.getEstimatedSecondsLeft() + "s", Color.LIGHT_GRAY);
+                line("Round ends in", s.getEstimatedSecondsLeft() < 0 ? "Learning pace" : "~" + s.getEstimatedSecondsLeft() + "s", Color.LIGHT_GRAY);
             }
-            line("Warmth", percent(s.getWarmth()), s.getWarmth() >= 0 && s.getWarmth() <= config.warmthWarning() ? Color.ORANGE : Color.WHITE);
-            line("Potion doses / reserve", s.getRejuvenationDoses() + " / " + plugin.getPotionTargetDoses(), Color.WHITE);
-            line("Roots / kindling", s.getBrumaRoots() + " / " + s.getBrumaKindling(), Color.WHITE);
-            if (s.getRoundState() == RoundState.COUNTDOWN)
-            {
-                line("Starts in", s.getSecondsToStart() > 0 ? s.getSecondsToStart() + "s" : "Waiting", Color.WHITE);
-            }
-            line("Inventory points", "+" + s.inventoryPoints() + " (" + s.potentialPointsIfFletched() + " fletched)", Color.WHITE);
+            else { body(WintertodtGuidance.phase(s)); }
         }
         if (config.overlayDetail() == OverlayDetail.DETAILED || config.debug())
         {
+            body(WintertodtGuidance.explanation(o));
+            line("Potion doses / reserve", s.getRejuvenationDoses() + " / " + plugin.getPotionTargetDoses(), Color.WHITE);
+            line("Roots / kindling", s.getBrumaRoots() + " / " + s.getBrumaKindling(), Color.WHITE);
             line("Usable time budget", s.getRoundBudgetSeconds() < 0 ? "Unknown" : s.getRoundBudgetSeconds() + "s", Color.LIGHT_GRAY);
             line("Wintertodt", percent(s.getWintertodtEnergy()) + " / " + s.getEndUrgency(), Color.WHITE);
             line("Projected total", number(s.projectedPoints()), Color.WHITE);
@@ -100,11 +105,17 @@ public class WintertodtOverlay extends OverlayPanel
     {
         if (o.getType() == ObjectiveType.RESTORE_WARMTH) { return o.isUrgent() ? Color.RED : Color.ORANGE; }
         if (o.isUrgent()) { return Color.ORANGE; }
+        if (WintertodtGuidance.isSupplyTarget(o)) { return SUPPLY_FLAME; }
         if (!o.actionable()) { return new Color(130, 200, 150); }
-        return new Color(0, 160, 145);
+        return FLAME;
     }
     private static String number(int n) { return n < 0 ? "Unknown" : Integer.toString(n); }
     private static String percent(int n) { return n < 0 ? "Unknown" : n + "%"; }
+    private void body(String text)
+    {
+        panelComponent.getChildren().add(new WintertodtInstructionComponent(text, Color.LIGHT_GRAY,
+            new Font(Font.SANS_SERIF, Font.PLAIN, 12)));
+    }
     private void line(String left, String right, Color color)
     {
         panelComponent.getChildren().add(LineComponent.builder().left(left + ":").leftColor(Color.LIGHT_GRAY)

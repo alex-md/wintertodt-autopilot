@@ -418,4 +418,34 @@ public class WintertodtDecisionEngineTest
         assertEquals(ObjectiveType.WAIT, decide(s.wintertodtEnergy(2).endUrgency(EndUrgency.IMMINENT)).getType());
     }
 
+    @Test public void supplyInstructionsTrackRemainingIngredientsAndMixing()
+    {
+        WintertodtSnapshot.WintertodtSnapshotBuilder s = active().rejuvenationDoses(0)
+            .firemakingLevel(50).warmClothingCount(0).wintertodtEnergy(100);
+        assertEquals("Take 3 unfinished potions", decide(s).getInstruction());
+        WintertodtObjective two = decide(s.unfinishedPotionCount(1));
+        assertEquals(2, two.getQuantity());
+        assertEquals("Take 2 unfinished potions", two.getInstruction());
+        assertEquals("Take 1 unfinished potion", decide(s.unfinishedPotionCount(2)).getInstruction());
+        assertEquals("Pick 3 bruma herbs", decide(s.unfinishedPotionCount(3)).getInstruction());
+        assertEquals("Mix 1 potion with Brew'ma", decide(s.brumaHerbCount(1).canMixPotion(false)).getInstruction());
+        assertEquals("Mix 1 potion", decide(s.canMixPotion(true)).getInstruction());
+    }
+
+    @Test public void missingToolsHaveOneItemAndAnExplicitInstruction()
+    {
+        WintertodtSnapshot[] missing = {
+            active().hasAxe(false).build(), active().hasHammer(false).build(),
+            active().hasKnife(false).build(), active().hasTinderbox(false).build()
+        };
+        String[] labels = {"Take 1 axe", "Take 1 hammer", "Take 1 knife", "Take 1 tinderbox"};
+        for (int i = 0; i < missing.length; i++)
+        {
+            WintertodtObjective o = engine.decide(missing[i], settings);
+            assertEquals(ObjectiveType.GET_TOOL, o.getType());
+            assertEquals(1, o.getQuantity());
+            assertEquals(labels[i], o.getInstruction());
+        }
+    }
+
 }

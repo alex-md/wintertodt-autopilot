@@ -1,6 +1,6 @@
 # Live Wintertodt validation
 
-Status: **not performed**. Use a mass world before publishing or adding Solo. Run `./gradlew run`, enable the plugin's debug overlay, and perform all gameplay manually.
+Status: **in progress; final full validation pending**. Use a mass world before publishing or adding Solo. Run `./gradlew run`, enable the plugin's debug overlay, and perform all gameplay manually.
 
 ## Observation gate
 
@@ -35,7 +35,7 @@ Status: **not performed**. Use a mass world before publishing or adding Solo. Ru
 
 - [ ] Read Minimal, Normal, Detailed and debug panels at common interface scales; move and resize the overlay.
 - [ ] Only the current object/NPC and applicable inventory items receive strong highlights.
-- [ ] Toggle walking paths and standing tiles independently. Check large outlines/labels and inventory highlights at common interface scales.
+- [ ] Toggle walking paths and standing tiles independently. Check target outlines and inventory highlights at common interface scales.
 - [ ] Follow walking lines around arena walls to crates, herbs, trees and braziers. Change the target, move, disable the line and confirm route updates/clears.
 - [ ] Existing game/Quest Helper arrows remain intact; disable the plugin and confirm only its own arrow is removed.
 - [ ] Confirm idle grace, inactivity delay and notification cooldown on actual action timing.
@@ -46,17 +46,17 @@ Status: **not performed**. Use a mass world before publishing or adding Solo. Ru
 Do not mark these checks complete from unit tests. Solo energy stabilization remains separate advanced work. Collision-aware paths require the live checks above.
 
 
-## Sidebar, pause and finish forecast
+## Built-in settings, pause and finish forecast
 
-- [ ] Open the brazier sidebar icon before entering Wintertodt. Supply observations show unknown rather than missing.
-- [ ] Change strategy, goal, fletching mode and corner in the sidebar; confirm the plugin settings reflect them, and vice versa. Re-enabling retains these choices.
-- [ ] Pause while an arrow/path is visible; verify overlays, highlights and owned arrows clear and notifications stop. Resume restores current guidance. Check hopping/loading while paused.
+- [ ] Confirm no plugin sidebar icon is added. Open Wintertodt Autopilot through RuneLite settings and through the overlay Configure menu.
+- [ ] Change strategy, goal, fletching mode and corner in built-in settings; confirm the next tick uses the new plan. Re-enabling retains these choices.
+- [ ] Pause while an arrow/path is visible; verify overlays, highlights and owned arrows clear and notifications stop. Resume restores current guidance. Check hopping/loading and restarting while paused; the saved pause setting remains in effect.
 - [ ] Watch the finish estimate during a mass round; compare observed finishing time to the forecast and usable budget. Record lit braziers, energy and any abrupt pace change.
 - [ ] Confirm a stalled drain/brazier change removes the stale forecast and eventually relearns it. Missing HUD observations do not display a false zero countdown.
 - [ ] With roots held near the end, confirm chopping stops soon enough to walk and feed; test both roots-only and fletching strategies.
 - [ ] Confirm a partial timed fletching batch turns into feeding when its requested count is completed or the available time shrinks.
 - [ ] Confirm normal fletching routes from the roots to the adjacent brazier tile before highlighting knife/roots; test all four corners and a broken/unlit brazier.
-- [ ] Check sidebar text wrapping and scrolling at RuneLite's standard width and at UI scaling settings.
+- [ ] Check Normal acknowledges an action in progress, Resume appears after interruptions, and urgent warmth interrupts the routine cue. Minimal still shows warmth. Check wrapping at common interface scales.
 
 
 ## Follow-up checks from initial live feedback
@@ -68,14 +68,41 @@ Do not mark these checks complete from unit tests. Solo energy stabilization rem
 - [ ] Observe predictions through ordinary energy bursts and changes between three/four lit braziers; they should retain a learned pace rather than flicker back to learning. Sustained acceleration should shorten the estimate gradually.
 
 
-## Foreground callouts and contrast
+## Scene highlights and contrast
 
-- [ ] In a crowded mass world, all action callouts remain readable in front of actors and are offset beside their marked tile. Check fletching, chopping, feeding, repairs, relighting and supplies.
-- [ ] Near viewport edges, the callout switches sides or clamps inside the game area. It must not spill onto chat, inventory or the sidebar.
-- [ ] Teal normal highlights remain visible against snow and stone. Orange/red attention colors and border pulses retain their existing behavior.
+- [ ] Orange-yellow normal highlights remain visible against snow and stone. Orange/red attention colors and border pulses retain their existing behavior.
 - [ ] Southwest chopping uses the ordinary reachable interaction tile again; there is no fixed safespot setting or route.
 
 
 - [ ] In Firemaking XP mode at 8–10% energy, relight, then verify guidance chops a small viable batch rather than declaring the round finished. After feeding, it should offer another batch if at least one additional root fits.
 - [ ] During a temporary loss of the forecast after relighting, Firemaking XP mode continues with its small-batch fallback; at truly imminent energy with no estimate, it still waits.
-- [ ] Teal outlines have subtle feathering, while route cores remain thin and urgent colors/pulses stay distinct.
+- [ ] Orange-yellow outlines have subtle feathering, while route cores remain thin and urgent colors/pulses stay distinct.
+
+
+## Quiet while working, pulse when interrupted
+
+- [ ] Start chopping, feeding and fletching: the matching target outline, standing tile, path, owned hint arrow and inventory borders disappear once that activity is observed. The main overlay still acknowledges progress.
+- [ ] Interrupt feeding with fuel remaining: the fuel highlights pulse again. Extinguish or break the brazier: remaining roots/kindling pulse alongside the required relight/repair items and scene cue, even if the last feeding animation has not cleared.
+- [ ] Begin the repair/relight: matching cues settle. Resume feeding: all fuel borders disappear again. Low warmth must still take priority over fuel attention.
+- [ ] Disable attention pulses: needed highlights remain steady. Disable inventory highlights: fuel attention is suppressed. Other plugins' hint arrows remain intact.
+- [ ] Move the camera near each viewport edge and test fixed/resizable layouts. Optional routes and tile strokes stay in the game viewport.
+
+
+## Specific supply instructions
+
+- [ ] With missing tools, the main panel says "Take 1 axe/hammer/knife/tinderbox" and the correct crate has a brighter four-pixel outline.
+- [ ] While collecting potion ingredients, the main panel shows the remaining quantity (for example, "Take 2 unfinished potions", then "Take 1 unfinished potion", then "Pick 3 bruma herbs"). Check single/plural names and limited inventory room.
+
+
+## Clean scene defaults
+
+- [ ] With default settings, there is no walking line or floor square. Target outlines, owned hint arrows and inventory attention still work.
+- [ ] Enable paths or standing tiles explicitly: paths draw a line; standing tiles mark only the destination. No intermediate breadcrumb squares appear. Turn both off and confirm the main instruction panel remains available.
+- [ ] Existing profiles with saved true values need Show walking path and Highlight standing tiles switched off once; subsequent restarts retain those choices.
+
+
+## No floating scene text
+
+- [ ] During supplies, chopping, feeding, repairs, relighting and countdown positioning, no floating text box appears beside the target, even with optional paths/standing tiles enabled.
+- [ ] All instructions and quantities appear in the main movable guidance panel. Object/NPC outlines and applicable inventory attention cues identify the target.
+- [ ] Hide/show the main panel through settings and confirm there is no second instruction overlay in the scene.

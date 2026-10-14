@@ -1,6 +1,7 @@
 package com.wintertodtautopilot;
 
 import org.junit.Test;
+import net.runelite.api.gameval.ItemID;
 import static org.junit.Assert.*;
 
 public class WintertodtHighlightTest
@@ -48,4 +49,43 @@ public class WintertodtHighlightTest
         assertFalse(WintertodtHighlight.needsAttention(s, new WintertodtObjective(ObjectiveType.WAIT, "Wait", "countdown", TargetKind.NONE, 0, false)));
     }
 
+
+    @Test public void fuelSettlesWhileFeedingAndPulsesWhenMaintenanceBlocksIt()
+    {
+        WintertodtSnapshot feeding = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+            .localBrazierState(BrazierState.LIT).brumaRoots(5).brumaKindling(4)
+            .currentActivity(PlayerActivity.FEEDING).build();
+        WintertodtObjective feed = new WintertodtObjective(ObjectiveType.FEED, "Feed", "batch_feed",
+            TargetKind.BRAZIER, 9, false, ItemID.WINT_BRUMA_KINDLING);
+        assertFalse(WintertodtHighlight.inventoryItem(feeding, feed, ItemID.WINT_BRUMA_KINDLING));
+        WintertodtSnapshot stopped = feeding.toBuilder().localBrazierState(BrazierState.UNLIT).build();
+        WintertodtObjective light = new WintertodtObjective(ObjectiveType.LIGHT, "Relight", "brazier_unlit",
+            TargetKind.BRAZIER, 0, false, ItemID.TINDERBOX);
+        // A changed objective must wake the cue even before a stale feeding animation clears.
+        assertTrue(WintertodtHighlight.inventoryItem(stopped, light, ItemID.WINT_BRUMA_ROOT));
+        assertTrue(WintertodtHighlight.inventoryItem(stopped, light, ItemID.WINT_BRUMA_KINDLING));
+        assertTrue(WintertodtHighlight.inventoryItem(stopped, light, ItemID.TINDERBOX));
+        assertFalse(WintertodtHighlight.inventoryItem(stopped, light, ItemID.KNIFE));
+        assertEquals(.25f, WintertodtHighlight.strengthAt(stopped, light, true, 900_000_000L), .001f);
+        assertEquals(1f, WintertodtHighlight.strengthAt(stopped, light, false, 900_000_000L), 0);
+        assertFalse(WintertodtHighlight.inventoryItem(stopped.toBuilder().currentActivity(PlayerActivity.LIGHTING).build(),
+            light, ItemID.WINT_BRUMA_ROOT));
+        assertFalse(WintertodtHighlight.inventoryItem(feeding, feed, ItemID.WINT_BRUMA_KINDLING));
+        assertTrue(WintertodtHighlight.inventoryItem(feeding.toBuilder().currentActivity(PlayerActivity.IDLE)
+            .interrupted(true).build(), feed, ItemID.WINT_BRUMA_KINDLING));
+    }
+
+    @Test public void fuelAttentionDoesNotDistractFromWarmthOrEmptyInventory()
+    {
+        WintertodtSnapshot stopped = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+            .localBrazierState(BrazierState.BROKEN).brumaRoots(5).build();
+        WintertodtObjective drink = new WintertodtObjective(ObjectiveType.RESTORE_WARMTH, "Drink", "warmth_low",
+            TargetKind.NONE, 1, true, ItemID.WINT_POTION4);
+        assertFalse(WintertodtHighlight.inventoryItem(stopped, drink, ItemID.WINT_BRUMA_ROOT));
+        assertTrue(WintertodtHighlight.inventoryItem(stopped, drink, ItemID.WINT_POTION4));
+        WintertodtObjective repair = new WintertodtObjective(ObjectiveType.REPAIR, "Repair", "brazier_broken",
+            TargetKind.BRAZIER, 0, true, ItemID.HAMMER);
+        assertTrue(WintertodtHighlight.inventoryItem(stopped, repair, ItemID.WINT_BRUMA_ROOT));
+        assertFalse(WintertodtHighlight.inventoryItem(stopped.toBuilder().brumaRoots(0).build(), repair, ItemID.WINT_BRUMA_ROOT));
+    }
 }

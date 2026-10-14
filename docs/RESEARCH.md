@@ -120,3 +120,43 @@ The live screenshot showed actor models obscuring the direction text drawn in `A
 The six-root minimum introduced to avoid tiny reward-focused trips was incorrectly shared by Firemaking XP mode. It could report no time remaining even when the budget admitted two or three raw roots. XP mode now treats each root as useful, retains the feeding deadline, and resumes when a small additional batch fits. It also bypasses the finished-batch latch when timing temporarily disappears around relighting, while keeping the conservative imminent-round stop. Regression scenarios cover 8% energy, relighting, three roots followed by another two-root opportunity, missing forecasts, and a genuinely insufficient time budget.
 
 Normal highlights now use teal. Scene model outlines increase their feathering from two to three pixels. Walking, tile and inventory borders add two low-opacity edge strokes (18/255 and 42/255), extending only 1.5 pixels beyond the core, with antialiasing. Existing thin route cores and attention-pulse behavior are retained.
+
+
+## Settings and guidance polish — 13 October 2026
+
+Removed the custom Swing sidebar and its toolbar entry. RuneLite configuration is now the only controls surface, with saved pause, plan choices, and optional display/notification settings. Pause continues observing the round but clears owned cues and suppresses notifications. It now persists across disabling/re-enabling and restarts, replacing the transient pause described above.
+
+The overlay uses an observed-action status, a short contextual instruction, warmth even in Minimal, and separate earned/carried points. Detailed/debug views retain estimates and diagnostics. Synthetic previews cover active, interrupted, urgent, paused, Minimal and debug states; live scaling and game checks remain open.
+
+See [Phase 2: Solo mode](SOLO_MODE_RESEARCH.md) for fresh source inspection, the proposed phase model, limitations of existing observations and the implementation/validation sequence. No Solo behavior has been enabled.
+
+
+## Scene clutter and interrupted fuel — 13 October 2026
+
+Live screenshot feedback showed overlapping object/tile/arrow/callout cues, including a CHOP label while chopping was already underway. Scene and inventory overlays now use the same observed-action check as the main panel: matching activity suppresses those cues. The client-tick path and owned hint arrow also settle until the player needs to act again. A new maintenance objective still wakes cues even if the previous feeding animation persists briefly.
+
+When an unlit/broken brazier blocks feeding, carried roots and kindling join the relight/repair/healing attention cues. Once the matching maintenance or feeding action starts, inventory borders disappear. Warmth guidance retains priority, and the pulse/highlight toggles still apply.
+
+Pending callouts avoid nearby projected player head/feet bounds and the target NPC, use an opaque backing, and omit the leader line. If nearby placements are all occupied, the main panel remains the instruction source. Head/feet projections avoid per-frame model-hull calculations for mass-world crowds. Paths and floor markers use a separate viewport-clipped graphics context. These changes still require the new live checks above.
+
+
+## Specific supply callouts — 13 October 2026
+
+Replaced generic SUPPLIES / TAKE HERE labels with explicit remaining quantities for tools, unfinished potions, herbs and Brew'ma mixing. Tool objectives now carry quantity one and use the same text on the main panel and crate. Ingredient callouts follow the planner's current remaining count, including inventory-space limits. Supply callouts anchor to the observed target itself and remain available when target highlighting is enabled but paths/standing tiles are off. Supplies use brighter teal and a four-pixel normal model outline.
+
+
+## Remove floor clutter — 13 October 2026
+
+Walking paths and standing-tile highlights now default to off. Removed intermediate breadcrumb squares entirely; opting into standing tiles marks only the destination. All action labels can anchor to the target object/NPC independently of path and standing-tile settings, keeping the instruction without floor clutter. Existing explicitly saved settings are retained and can be turned off in configuration.
+
+
+## Final presentation decision: remove floating text — 13 October 2026
+
+This decision supersedes the earlier callout-placement and supply-callout work. Removed the floating-label overlay class and registration entirely, plus its placement code/tests and preview samples. Instructions and remaining supply quantities now appear only in the main movable panel; the scene retains target outlines, owned arrows and opt-in floor/path cues. No setting can restore the removed floating boxes.
+
+Reinspected [GOTR Autopilot's InstructionOverlay](https://github.com/FabulousOtter/gotr-autopilot/blob/feb04c81d2e58bb88294ef313be3744fc57b2611/src/main/java/com/fabulousotter/gotr/overlay/InstructionOverlay.java) and [SceneOverlay](https://github.com/FabulousOtter/gotr-autopilot/blob/feb04c81d2e58bb88294ef313be3744fc57b2611/src/main/java/com/fabulousotter/gotr/overlay/SceneOverlay.java), and [Quest Helper's README](https://github.com/Zoinkwiz/quest-helper/blob/master/README.md) and [contribution guide](https://github.com/Zoinkwiz/quest-helper/wiki/Contribution-guide). GOTR separates its instruction panel from outlines/item highlights; its scene labels are optional. Quest Helper documents a current-step overlay with object/NPC/tile highlights, and recommends conveying positioning setup in panel text. Our choice is to keep the panel-plus-highlight pattern and remove scene text entirely in response to live feedback. No source code copied or dependency added.
+
+
+## Flame highlight palette — 13 October 2026
+
+Live feedback found the teal difficult to distinguish. Normal target, inventory, optional path/tile and panel accents now use flame orange-yellow (#FFB428); supply targets use a lighter gold (#FFD24B). This replaces the earlier teal palette. Emergency warmth remains red, with pale red text for readability. Existing dark edging and pulse behavior are retained.

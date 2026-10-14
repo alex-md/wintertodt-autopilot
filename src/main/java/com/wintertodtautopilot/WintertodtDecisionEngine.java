@@ -118,7 +118,7 @@ public final class WintertodtDecisionEngine
         {
             if (!s.isHasHammer())
             {
-                return tool("Get a hammer", TargetKind.HAMMER_CRATE, "missing_hammer");
+                return tool(TargetKind.HAMMER_CRATE, "missing_hammer");
             }
             return new WintertodtObjective(ObjectiveType.REPAIR, "Repair the brazier", "brazier_broken",
                 TargetKind.BRAZIER, 0, true, ItemID.HAMMER);
@@ -153,7 +153,7 @@ public final class WintertodtDecisionEngine
             }
             if (!s.isHasTinderbox() && !s.isHasBrumaTorch())
             {
-                return tool("Get a tinderbox", TargetKind.TINDERBOX_CRATE, "missing_tinderbox");
+                return tool(TargetKind.TINDERBOX_CRATE, "missing_tinderbox");
             }
             return new WintertodtObjective(ObjectiveType.LIGHT, "Relight the brazier", "brazier_unlit",
                 TargetKind.BRAZIER, 0, false, ItemID.TINDERBOX, ItemID.WINT_TORCH, ItemID.WINT_TORCH_OFFHAND);
@@ -240,7 +240,7 @@ public final class WintertodtDecisionEngine
             return fletch(s, count, "batch_fletch", false);
         }
         if (normal == ObjectiveType.FEED) { return feed(s, "batch_feed", false); }
-        if (!s.isHasAxe()) { return tool("Get an axe", TargetKind.AXE_CRATE, "missing_axe"); }
+        if (!s.isHasAxe()) { return tool(TargetKind.AXE_CRATE, "missing_axe"); }
         int remaining = Math.max(1, batchTarget - materials);
         if (s.getRoundBudgetSeconds() >= 0)
         {
@@ -319,18 +319,17 @@ public final class WintertodtDecisionEngine
 
     private WintertodtObjective prepare(WintertodtSnapshot s, PlannerSettings settings)
     {
-        String toolName = null;
         TargetKind crate = TargetKind.NONE;
-        if (!s.isHasAxe()) { toolName = "an axe"; crate = TargetKind.AXE_CRATE; }
-        else if (!s.isHasHammer()) { toolName = "a hammer"; crate = TargetKind.HAMMER_CRATE; }
+        if (!s.isHasAxe()) { crate = TargetKind.AXE_CRATE; }
+        else if (!s.isHasHammer()) { crate = TargetKind.HAMMER_CRATE; }
         else if (!s.isHasKnife() && WintertodtGuidance.needsKnife(settings))
-        { toolName = "a knife"; crate = TargetKind.KNIFE_CRATE; }
+        { crate = TargetKind.KNIFE_CRATE; }
         else if (!s.isHasTinderbox() && !s.isHasBrumaTorch())
-        { toolName = "a tinderbox"; crate = TargetKind.TINDERBOX_CRATE; }
-        if (toolName != null)
+        { crate = TargetKind.TINDERBOX_CRATE; }
+        if (crate != TargetKind.NONE)
         {
             if (s.getFreeSlots() == 0) { return makeSpace(s, "tools"); }
-            return tool("Get " + toolName + " before starting", crate, "prepare_tools");
+            return tool(crate, "prepare_tools");
         }
         // A partial reserve is enough to finish a short remaining window. Do not
         // send carried fuel on a late supply trip just to round doses up to a bottle.
@@ -374,10 +373,12 @@ public final class WintertodtDecisionEngine
     {
         if (s.getUnfinishedPotionCount() > 0 && s.getBrumaHerbCount() > 0)
         {
+            int count = Math.min(bottles, Math.min(s.getBrumaHerbCount(), s.getUnfinishedPotionCount()));
             return new WintertodtObjective(ObjectiveType.MAKE_REJUVENATION,
-                s.isCanMixPotion() ? "Combine herb and unfinished potion" : "Ask Brew'ma to mix your potion",
+                s.isCanMixPotion() ? "Mix " + count + " potion" + (count == 1 ? "" : "s")
+                    : WintertodtGuidance.supplyInstruction(TargetKind.BREWMA, count),
                 "mix_rejuvenation", s.isCanMixPotion() ? TargetKind.NONE : TargetKind.BREWMA,
-                Math.min(bottles, Math.min(s.getBrumaHerbCount(), s.getUnfinishedPotionCount())), false,
+                count, false,
                 ItemID.WINT_HERB, ItemID.WINT_VIAL);
         }
         if (s.getFreeSlots() == 0) { return makeSpace(s, "potion ingredients"); }
@@ -388,8 +389,7 @@ public final class WintertodtDecisionEngine
         if (capacity == 0) { return makeSpace(s, "potion ingredients"); }
         int remaining = Math.min(capacity, takeVial ? bottles - s.getUnfinishedPotionCount() : Math.max(1, bottles - s.getBrumaHerbCount()));
         return new WintertodtObjective(ObjectiveType.MAKE_REJUVENATION,
-            takeVial ? "Take " + remaining + " unfinished rejuvenation potion" + (remaining == 1 ? "" : "s")
-                : "Pick " + remaining + " bruma herb" + (remaining == 1 ? "" : "s"),
+            WintertodtGuidance.supplyInstruction(takeVial ? TargetKind.POTION_CRATE : TargetKind.HERBS, remaining),
             reason, takeVial ? TargetKind.POTION_CRATE : TargetKind.HERBS,
             Math.min(remaining, s.getFreeSlots()), false);
     }
@@ -397,7 +397,7 @@ public final class WintertodtDecisionEngine
     private WintertodtObjective feed(WintertodtSnapshot s, String reason, boolean urgent)
     {
         return new WintertodtObjective(ObjectiveType.FEED,
-            "finish_feed".equals(reason) ? "Stop processing - feed the brazier now"
+            "finish_feed".equals(reason) ? "Continue feeding brazier"
                 : urgent && !s.rewardThresholdReached() ? "Feed now - secure 500 points"
                 : s.isInterrupted() ? "Continue feeding" : "Feed the brazier",
             reason, TargetKind.BRAZIER, s.getBrumaRoots() + s.getBrumaKindling(), urgent,
@@ -407,9 +407,10 @@ public final class WintertodtDecisionEngine
     {
         return new WintertodtObjective(type, text, reason, target, 0, false);
     }
-    private WintertodtObjective tool(String text, TargetKind target, String reason)
+    private WintertodtObjective tool(TargetKind target, String reason)
     {
-        return action(ObjectiveType.GET_TOOL, text, reason, target);
+        return new WintertodtObjective(ObjectiveType.GET_TOOL, WintertodtGuidance.supplyInstruction(target, 1),
+            reason, target, 1, false);
     }
     private static int upgrades(WintertodtSnapshot s, PlannerSettings settings, int goal)
     {

@@ -2,7 +2,6 @@ package com.wintertodtautopilot;
 
 import com.google.inject.Provides;
 import javax.inject.Inject;
-import javax.swing.SwingUtilities;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -15,8 +14,6 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
-import net.runelite.client.ui.ClientToolbar;
-import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.events.ConfigChanged;
 
 @PluginDescriptor(name = "Wintertodt Autopilot",
@@ -37,14 +34,9 @@ public class WintertodtAutopilotPlugin extends Plugin
     @Inject private OverlayManager overlays;
     @Inject private WintertodtOverlay panel;
     @Inject private WintertodtSceneOverlay scene;
-    @Inject private WintertodtActionLabelOverlay actionLabel;
     @Inject private WintertodtInventoryOverlay inventory;
     @Inject private Notifier notifier;
-    @Inject private ClientToolbar toolbar;
-    @Inject private ConfigManager configManager;
-    private WintertodtPluginPanel sidebar;
-    private NavigationButton navigation;
-    @Getter private volatile boolean paused;
+    public boolean isPaused() { return config.pauseGuidance(); }
     private final WintertodtDecisionEngine engine = new WintertodtDecisionEngine();
     private final WintertodtAttentionTracker attention = new WintertodtAttentionTracker();
     @Getter private WintertodtSnapshot snapshot = WintertodtSnapshot.builder().build();
@@ -64,27 +56,13 @@ public class WintertodtAutopilotPlugin extends Plugin
     @Override
     protected void startUp() throws Exception
     {
-        paused = false;
-        onEdt(() -> {
-            sidebar = new WintertodtPluginPanel(this::togglePause,
-                (key, value) -> configManager.setConfiguration("wintertodtautopilot", key, value));
-            navigation = NavigationButton.builder().tooltip("Wintertodt Autopilot")
-                .icon(WintertodtPluginPanel.icon()).priority(7).panel(sidebar).build();
-            toolbar.addNavigation(navigation);
-        });
-        overlays.add(panel); overlays.add(scene); overlays.add(actionLabel); overlays.add(inventory);
+        overlays.add(panel); overlays.add(scene); overlays.add(inventory);
         clientThread.invoke(this::reset);
     }
     @Override
     protected void shutDown() throws Exception
     {
-        onEdt(() -> {
-            toolbar.removeNavigation(navigation);
-            navigation = null;
-            sidebar = null;
-        });
-        paused = false;
-        overlays.remove(panel); overlays.remove(scene); overlays.remove(actionLabel); overlays.remove(inventory);
+        overlays.remove(panel); overlays.remove(scene); overlays.remove(inventory);
         clientThread.invoke(this::reset);
     }
     private void reset()
@@ -92,7 +70,6 @@ public class WintertodtAutopilotPlugin extends Plugin
         arrow.clear(); paths.reset(); potionTargetDoses = 0; tracker.reset(); objects.reset(); npcs.reset(); engine.reset(); attention.reset();
         snapshot = WintertodtSnapshot.builder().build(); objective = null;
         targetObject = null; targetNpc = null; targetPoint = null; bootstrapNeeded = true;
-        refreshPanel();
     }
     @Subscribe
     public void onGameStateChanged(GameStateChanged event)
@@ -133,41 +110,17 @@ public class WintertodtAutopilotPlugin extends Plugin
         }
         snapshot = next; objective = chosen;
         potionTargetDoses = engine.getPreparationDoseTarget();
-        refreshPanel();
-        if (paused)
+        if (isPaused())
         {
             clearGuidance();
             return;
         }
         resolveTarget();
-        paths.update(targetPoint, targetObject, targetNpc, config.showPath() || config.highlightStandingTiles());
-        arrow.update(targetNpc, targetPoint, config.showHintArrow());
+        boolean needsCue = !WintertodtGuidance.performing(snapshot, objective);
+        paths.update(targetPoint, targetObject, targetNpc, needsCue && (config.showPath() || config.highlightStandingTiles()));
+        arrow.update(targetNpc, targetPoint, needsCue && config.showHintArrow());
         String message = attention.notification(snapshot, objective, config, client.getTickCount());
         if (message != null) { notifier.notify(message); }
-    }
-    private static void onEdt(Runnable action) throws Exception
-    {
-        if (SwingUtilities.isEventDispatchThread()) { action.run(); }
-        else { SwingUtilities.invokeAndWait(action); }
-    }
-    private void refreshPanel()
-    {
-        WintertodtPluginPanel current = sidebar;
-        if (current != null)
-        {
-            current.update(new WintertodtPanelState(snapshot, objective, PlannerSettings.from(config),
-                config.workingCorner(), potionTargetDoses, paused, config.showPath()));
-        }
-    }
-    public void togglePause()
-    {
-        clientThread.invoke(() -> {
-            paused = !paused;
-            attention.reset();
-            if (paused) { clearGuidance(); }
-            else { engine.reset(); }
-            refreshPanel();
-        });
     }
     private void clearGuidance()
     {
@@ -179,7 +132,23 @@ public class WintertodtAutopilotPlugin extends Plugin
     {
         if ("wintertodtautopilot".equals(event.getGroup()))
         {
-            clientThread.invoke(this::refreshPanel);
+            clientThread.invoke(() -> {
+                if ("pauseGuidance".equals(event.getKey()))
+                {
+                    attention.reset();
+                    if (isPaused()) { clearGuidance(); }
+                    else { engine.reset(); }
+                }
+                else if ("strategy".equals(event.getKey()) || "pointGoal".equals(event.getKey())
+                    || "fletchMode".equals(event.getKey()) || "workingCorner".equals(event.getKey()))
+                {
+                    engine.reset();
+                    clearGuidance();
+                }
+                // Apply visual settings immediately, even between game ticks.
+                if (!config.showHintArrow()) { arrow.clear(); }
+                if (!config.showPath() && !config.highlightStandingTiles()) { paths.reset(); }
+            });
         }
     }
     private void resolveTarget()

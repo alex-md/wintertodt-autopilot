@@ -1,6 +1,7 @@
 package com.wintertodtautopilot;
 
 import java.awt.*;
+import net.runelite.api.gameval.ItemID;
 
 /** Shared scene/inventory animation, with no mutation of planner state. */
 final class WintertodtHighlight
@@ -18,26 +19,26 @@ final class WintertodtHighlight
             || (!o.actionable() && !blocked)
             || (s.getCurrentActivity() == PlayerActivity.MOVING && o.getType() != ObjectiveType.RESTORE_WARMTH))
         { return false; }
-        PlayerActivity activity;
-        switch (o.getType())
-        {
-            case RESTORE_WARMTH: activity = PlayerActivity.RESTORING_WARMTH; break;
-            case REPAIR: activity = PlayerActivity.REPAIRING; break;
-            case LIGHT: activity = PlayerActivity.LIGHTING; break;
-            case HEAL_PYROMANCER: activity = PlayerActivity.HEALING; break;
-            case FEED: activity = PlayerActivity.FEEDING; break;
-            case FLETCH: activity = PlayerActivity.FLETCHING; break;
-            case CHOP: activity = PlayerActivity.CHOPPING; break;
-            case MAKE_REJUVENATION: activity = PlayerActivity.MAKING_POTION; break;
-            default: activity = PlayerActivity.MOVING; break;
-        }
-        if (s.getCurrentActivity() == activity) { return false; }
+        if (WintertodtGuidance.performing(s, o)) { return false; }
         return blocked || needsRestart(s, o) || s.isPlayerIdle() || o.isUrgent()
             || o.getType() == ObjectiveType.RESTORE_WARMTH || o.getType() == ObjectiveType.REPAIR
             || o.getType() == ObjectiveType.LIGHT || o.getType() == ObjectiveType.HEAL_PYROMANCER
             || o.getType() == ObjectiveType.FEED && (s.getCurrentActivity() == PlayerActivity.FLETCHING || s.getCurrentActivity() == PlayerActivity.CHOPPING)
             || o.getType() == ObjectiveType.FLETCH && s.getCurrentActivity() == PlayerActivity.CHOPPING;
     }
+    static boolean inventoryItem(WintertodtSnapshot s, WintertodtObjective o, int itemId)
+    {
+        if (o == null || s.getRoundState() == RoundState.OUTSIDE || WintertodtGuidance.performing(s, o)) { return false; }
+        if (o.getItemIds().contains(itemId)) { return true; }
+        // Fuel is an attention cue when maintenance blocks feeding, not a new instruction to feed an unlit brazier.
+        boolean blockedFuel = s.active() && (s.getLocalBrazierState() == BrazierState.UNLIT
+            || s.getLocalBrazierState() == BrazierState.BROKEN)
+            && (o.getType() == ObjectiveType.LIGHT || o.getType() == ObjectiveType.REPAIR
+                || o.getType() == ObjectiveType.HEAL_PYROMANCER);
+        return blockedFuel && (itemId == ItemID.WINT_BRUMA_ROOT && s.getBrumaRoots() > 0
+            || itemId == ItemID.WINT_BRUMA_KINDLING && s.getBrumaKindling() > 0);
+    }
+
     static float strength(WintertodtSnapshot snapshot, WintertodtObjective objective, boolean enabled)
     {
         return strengthAt(snapshot, objective, enabled, System.nanoTime());
