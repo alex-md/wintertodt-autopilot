@@ -11,6 +11,7 @@ Status: **in progress; final full validation pending**. Use a mass world before 
 - [ ] Confirm pyromancer healthy/down transformations and correct local association.
 - [ ] Equip main/offhand bruma torches and Imcando hammers; confirm tool availability independently from knife/tinderbox.
 - [ ] Carry a fletching knife instead of a knife: no knife crate prompt, and the fletching knife is highlighted for fletching. Wielded alone, the knife crate is still requested.
+- [ ] With a fletching knife carried or wielded, confirm late-round fletching batches finish in time at 1.2 seconds per root after the first.
 - [ ] Check ordinary axe variants and food, including cake at full Hitpoints and food that heals less than 4 HP.
 - [ ] Confirm potion dose counts and mixing with and without Druidic Ritual.
 - [ ] Enter with only tools: obtain recommended potions before chopping; check herb and vial targets.
