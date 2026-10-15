@@ -9,6 +9,8 @@ import net.runelite.api.coords.WorldPoint;
 @Builder(toBuilder = true)
 public class WintertodtSnapshot
 {
+    @Builder.Default int observationTick = -1;
+    @lombok.Singular private java.util.List<CornerObservation> corners;
     @Builder.Default RoundState roundState = RoundState.OUTSIDE;
     @Builder.Default int wintertodtEnergy = -1;
     @Builder.Default int warmth = -1;
@@ -24,6 +26,7 @@ public class WintertodtSnapshot
     int unfinishedPotionCount;
     int brumaHerbCount;
     int freeSlots;
+    @Builder.Default int runEnergyPercent = -1;
     @Builder.Default int warmthItem = -1;
     @Builder.Default int potionItem = -1;
     boolean hasKnife;
@@ -48,6 +51,26 @@ public class WintertodtSnapshot
     /** Walking tile distance to a usable adjacent tile; -1 if not observed. */
     @Builder.Default int brazierDistance = -1;
     @Builder.Default String interaction = "None";
+    /** -1 means incomplete evidence; a loaded-object count is not global coverage. */
+    public int observedGlobalLitBraziers()
+    {
+        java.util.EnumSet<WorkingCorner> seen = java.util.EnumSet.noneOf(WorkingCorner.class);
+        int lit = 0;
+        for (CornerObservation c : corners)
+        {
+            if (c.getCorner() == WorkingCorner.AUTOMATIC || !seen.add(c.getCorner())
+                || c.getBrazierSource() == CornerObservation.Source.NONE || !c.brazierFresh(observationTick)
+                || c.getBrazierState() == BrazierState.UNKNOWN || c.getBrazierState() == BrazierState.UNAVAILABLE)
+            { return -1; }
+            if (c.getBrazierState() == BrazierState.LIT) { ++lit; }
+        }
+        return seen.size() == 4 ? lit : -1;
+    }
+    public CornerObservation corner(WorkingCorner corner)
+    {
+        for (CornerObservation c : corners) { if (c.getCorner() == corner) { return c; } }
+        return null;
+    }
     public int inventoryPoints() { return brumaRoots * WintertodtConstants.ROOT_POINTS + brumaKindling * WintertodtConstants.KINDLING_POINTS; }
     public int potentialPointsIfFletched() { return (brumaRoots + brumaKindling) * WintertodtConstants.KINDLING_POINTS; }
     public int projectedPoints() { return points < 0 ? -1 : points + inventoryPoints(); }

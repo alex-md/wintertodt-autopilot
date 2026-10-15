@@ -49,24 +49,32 @@ public class WintertodtOverlay extends OverlayPanel
             body(WintertodtGuidance.reassurance(s, o));
         }
         line("Warmth", percent(s.getWarmth()), s.getWarmth() >= 0 && s.getWarmth() <= config.warmthWarning() ? Color.ORANGE : Color.WHITE);
-        int target = WintertodtGuidance.rewardTarget(config.pointGoal(), s.getPoints());
+        boolean soloMode = config.mode() == WintertodtMode.SOLO;
+        int target = soloMode ? Math.max(500, Math.min(100000, config.soloPointGoal()))
+            : WintertodtGuidance.rewardTarget(config.pointGoal(), s.getPoints());
+        if (soloMode)
+        {
+            line("Solo phase", plugin.getSoloPhase().toString(), new Color(130, 200, 150));
+            if (plugin.isSoloFinishRequested()) { body("Finish this round requested"); }
+            line("Energy / trend", percent(s.getWintertodtEnergy()) + " / " + plugin.getSoloEnergyTrend(), Color.LIGHT_GRAY);
+        }
         line("Reward progress", number(s.getPoints()) + " / " + target, s.rewardThresholdReached() ? new Color(130, 200, 150) : Color.WHITE);
         if (config.overlayDetail() != OverlayDetail.MINIMAL)
         {
             if (s.inventoryPoints() > 0) { line("Fuel to feed", "+" + s.inventoryPoints() + " pts", Color.LIGHT_GRAY); }
-            if (s.active())
+            if (s.active() && !soloMode)
             {
                 line("Round ends in", s.getEstimatedSecondsLeft() < 0 ? "Learning pace" : "~" + s.getEstimatedSecondsLeft() + "s", Color.LIGHT_GRAY);
             }
-            else { body(WintertodtGuidance.phase(s)); }
+            else if (!s.active()) { body(WintertodtGuidance.phase(s)); }
         }
         if (config.overlayDetail() == OverlayDetail.DETAILED || config.debug())
         {
             body(WintertodtGuidance.explanation(o));
             line("Potion doses / reserve", s.getRejuvenationDoses() + " / " + plugin.getPotionTargetDoses(), Color.WHITE);
             line("Roots / kindling", s.getBrumaRoots() + " / " + s.getBrumaKindling(), Color.WHITE);
-            line("Usable time budget", s.getRoundBudgetSeconds() < 0 ? "Unknown" : s.getRoundBudgetSeconds() + "s", Color.LIGHT_GRAY);
-            line("Wintertodt", percent(s.getWintertodtEnergy()) + " / " + s.getEndUrgency(), Color.WHITE);
+            if (!soloMode) { line("Usable time budget", s.getRoundBudgetSeconds() < 0 ? "Unknown" : s.getRoundBudgetSeconds() + "s", Color.LIGHT_GRAY); }
+            line("Wintertodt", percent(s.getWintertodtEnergy()) + (soloMode ? "" : " / " + s.getEndUrgency()), Color.WHITE);
             line("Projected total", number(s.projectedPoints()), Color.WHITE);
             line("Potential if fletched", s.getPoints() < 0 ? "Unknown" : Integer.toString(s.getPoints() + s.potentialPointsIfFletched()), Color.WHITE);
             line("Need for goal", s.getPoints() < 0 ? "Unknown" : Integer.toString(Math.max(0, target - s.getPoints())), Color.WHITE);
@@ -74,6 +82,7 @@ public class WintertodtOverlay extends OverlayPanel
             line("Pyromancer", !s.isLocalPyromancerKnown() ? "Unknown" : s.isLocalPyromancerIncapacitated() ? "Incapacitated" : "Healthy", Color.WHITE);
             line("Activity", s.getCurrentActivity().toString(), Color.WHITE);
             line("Firemaking / warm items", s.getFiremakingLevel() + " / " + (s.getWarmClothingCount() < 0 ? "Unknown" : s.getWarmClothingCount()), Color.WHITE);
+            if (soloMode) { line("Run energy", percent(s.getRunEnergyPercent()), Color.WHITE); }
             line("Corner", s.getWorkingCorner().toString(), Color.WHITE);
         }
         if (config.debug())

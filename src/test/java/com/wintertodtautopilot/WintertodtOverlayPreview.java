@@ -14,7 +14,7 @@ public final class WintertodtOverlayPreview
 {
     public static void main(String[] args) throws Exception
     {
-        BufferedImage image = new BufferedImage(1220, 1120, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage image = new BufferedImage(1220, 1550, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = image.createGraphics();
         graphics.setColor(new Color(34, 38, 41)); graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
         graphics.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13)); graphics.setColor(Color.LIGHT_GRAY);
@@ -75,6 +75,22 @@ public final class WintertodtOverlayPreview
                 .currentActivity(PlayerActivity.IDLE).points(0).brumaRoots(0).secondsToStart(45).build(), supply,
                 new WintertodtAutopilotConfig() { });
         }
+        graphics.setColor(Color.LIGHT_GRAY);
+        graphics.drawString("Solo: sustain / deliberate recovery / finish request / missing observations", 20, 1150);
+        String[] instructions = {"Fletch 17 roots", "Let energy recover to 12% - do not relight",
+            "Light the Northeast brazier to finish", "Check all brazier indicators before relighting"};
+        String[] reasons = {"solo_batch_fletch", "solo_recovery_wait", "solo_light", "solo_coverage_unknown"};
+        for (int i = 0; i < 4; i++)
+        {
+            final int index = i;
+            render(graphics, 20 + i * 300, 1170, base.toBuilder().wintertodtEnergy(i == 0 ? 26 : 9)
+                .currentActivity(PlayerActivity.IDLE).build(), new WintertodtObjective(i == 0 ? ObjectiveType.FLETCH : i == 2 ? ObjectiveType.LIGHT : ObjectiveType.WAIT,
+                    instructions[i], reasons[i], i == 2 ? TargetKind.BRAZIER : TargetKind.NONE, 0, false),
+                new WintertodtAutopilotConfig() {
+                    @Override public WintertodtMode mode() { return WintertodtMode.SOLO; }
+                    @Override public boolean finishSoloRound() { return index == 2; }
+                });
+        }
         graphics.dispose();
         Path path = Path.of("build", "preview", "overlays.png"); Files.createDirectories(path.getParent());
         ImageIO.write(image, "png", path.toFile());
@@ -83,7 +99,12 @@ public final class WintertodtOverlayPreview
         WintertodtObjective objective, WintertodtAutopilotConfig config)
     {
         WintertodtAutopilotPlugin plugin = mock(WintertodtAutopilotPlugin.class);
-        when(plugin.getPotionTargetDoses()).thenReturn(4);
+        when(plugin.getPotionTargetDoses()).thenReturn(config.mode() == WintertodtMode.SOLO ? config.finishSoloRound() ? 8 : 24 : 4);
+        when(plugin.getSoloPhase()).thenReturn(config.finishSoloRound() ? SoloPhase.FINISH
+            : objective.getReason().contains("recovery") ? SoloPhase.RECOVER_ENERGY
+            : objective.getReason().contains("unknown") ? SoloPhase.REASSESS : SoloPhase.SUSTAIN);
+        when(plugin.getSoloEnergyTrend()).thenReturn("STABLE");
+        when(plugin.isSoloFinishRequested()).thenReturn(config.finishSoloRound());
         when(plugin.isPaused()).thenReturn(config.pauseGuidance());
         when(plugin.getSnapshot()).thenReturn(snapshot); when(plugin.getObjective()).thenReturn(objective);
         WintertodtOverlay overlay = new WintertodtOverlay(plugin, config);

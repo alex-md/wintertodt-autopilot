@@ -19,6 +19,7 @@ public class WintertodtStateTracker
     @Inject private WintertodtObjectTracker objects;
     @Inject private WintertodtNpcTracker npcs;
     @Inject private WintertodtRoundTracker rounds;
+    private final WintertodtCornerTracker corners = new WintertodtCornerTracker();
     private PlayerActivity activity = PlayerActivity.IDLE;
     private int lastActionTick = -100;
     private int interruptedAt = -100;
@@ -44,6 +45,8 @@ public class WintertodtStateTracker
             .workingCorner(corner).localBrazierState(objects.brazier(location))
             .brazierDistance(objects.brazierDistance(player))
             .canMixPotion(canMixPotion).firemakingLevel(client.getRealSkillLevel(Skill.FIREMAKING));
+        int runEnergy = client.getEnergy();
+        b.runEnergyPercent(runEnergy >= 0 && runEnergy <= 10000 ? runEnergy / 100 : -1);
         inventory.fill(b);
         // Region 6462 includes the safe preparation area INSIDE the Doors of Dinh.
         // Do not mistake that area for an outside lobby when joining mid-round.
@@ -56,6 +59,8 @@ public class WintertodtStateTracker
             interrupted = false;
             lastActionTick = tick;
         }
+        if (boundary) { corners.reset(); }
+        b.observationTick(tick).corners(corners.observe(tick, objects, npcs, partial.active() ? client : null));
         int rawWarmth = client.getVarbitValue(VarbitID.WINT_WARMTH);
         int warmth = rawWarmth >= 0 && rawWarmth <= 1000 && (partial.active() || rawWarmth > 0) ? rawWarmth / 10 : -1;
         NPC pyro = npcs.target(TargetKind.PYROMANCER, corner.location());
@@ -149,6 +154,6 @@ public class WintertodtStateTracker
         activity = PlayerActivity.IDLE; lastActionTick = -100; interruptedAt = -100;
         interrupted = false; clickedCorner = null; canMixPotion = null;
         previous = WintertodtSnapshot.builder().build();
-        inventory.reset(); rounds.reset(); objects.resetCorner();
+        inventory.reset(); rounds.reset(); objects.resetCorner(); corners.reset();
     }
 }

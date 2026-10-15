@@ -84,6 +84,14 @@ public final class WintertodtGuidance
 
     public static String reassurance(WintertodtSnapshot s, WintertodtObjective o)
     {
+        if (o.getReason().startsWith("solo_recovery"))
+        { return "Leave braziers unlit. Recovery can take time; watch the energy trend."; }
+        if ("solo_coverage_unknown".equals(o.getReason()) || "solo_signals_unknown".equals(o.getReason()))
+        { return "Guidance needs fresh observations before recommending a relight."; }
+        if ("solo_points_heal".equals(o.getReason()))
+        { return "Heal the marked pyromancer. You can fletch roots while running."; }
+        if ("solo_remote_lit".equals(o.getReason())) { return "A remote brazier is still lit. Avoid adding drain at home."; }
+        if ("solo_rapid_drain".equals(o.getReason())) { return "Energy is dropping quickly. Feed carried fuel while checking the arena."; }
         if (performing(s, o)) { return "Keep going. Guidance updates when you need to act."; }
         if ("finish_feed".equals(o.getReason()) || "round_ending".equals(o.getReason()))
         { return "Feed your fuel before the round ends."; }
@@ -103,6 +111,21 @@ public final class WintertodtGuidance
         String reason = o.getReason();
         switch (reason)
         {
+            case "solo_restock": return "Replenish the Solo working reserve for warmth and pyromancer healing. Further restocks may be needed.";
+            case "solo_light": return "Current energy and all four brazier observations permit lighting this corner.";
+            case "solo_repair": return "Repair this destination before lighting. Energy is checked again on the next tick.";
+            case "solo_points_heal": return "In Points mode, heal observed damage for points. While fletching, nearby injured pyromancers are useful healing opportunities.";
+            case "solo_fletch_inside": return "Fletching is allowed at the roots and while running, but not in the safe preparation area.";
+            case "solo_heal": return "Heal this corner's incapacitated pyromancer. Keep a spare dose for personal warmth.";
+            case "solo_heal_reserve": return "Prepare more potions before spending your last personal warmth dose.";
+            case "solo_goal_feed": return "Carried points could meet your goal. Feed them first; only earned points trigger finishing.";
+            case "solo_finish_feed": return "Finishing is active. Feed carried fuel before lighting additional braziers.";
+            case "solo_finish_drain": return "Maintain the selected finish pair, or one nearby brazier when run energy is low.";
+            case "solo_batch_chop": return "Gather this Solo batch. The mass finish-time estimate does not control Solo gathering.";
+            case "solo_batch_fletch": return "Convert the current roots to kindling before feeding them.";
+            case "solo_batch_feed": return "Feed your batch to earn its points, then gather toward the fixed Solo goal.";
+            case "solo_observe_corner": return "Move to this destination and acquire the scene object before maintenance guidance.";
+            case "solo_observe_pyromancer": return "The destination's pyromancer must be directly observed before lighting.";
             case "warmth_low": return "Warmth has reached your restore threshold. Use the highlighted food or potion before continuing.";
             case "no_warmth_supplies": return "You have no detected usable food or potion. Reach the safe lobby before gathering more supplies.";
             case "prepare_tools": return "Take the missing tool from the highlighted crate. Equipped axes and bruma torches count too.";

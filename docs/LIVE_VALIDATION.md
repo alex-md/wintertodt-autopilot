@@ -1,6 +1,6 @@
 # Live Wintertodt validation
 
-Status: **in progress; final full validation pending**. Use a mass world before publishing or adding Solo. Run `./gradlew run`, enable the plugin's debug overlay, and perform all gameplay manually.
+Status: **in progress; final full validation pending**. Validate mass behavior before publishing. Experimental Solo requires the separate gates below. Run `./gradlew run`, enable the plugin's debug overlay, and perform all gameplay manually.
 
 ## Observation gate
 
@@ -106,3 +106,54 @@ Do not mark these checks complete from unit tests. Solo energy stabilization rem
 - [ ] During supplies, chopping, feeding, repairs, relighting and countdown positioning, no floating text box appears beside the target, even with optional paths/standing tiles enabled.
 - [ ] All instructions and quantities appear in the main movable guidance panel. Object/NPC outlines and applicable inventory attention cues identify the target.
 - [ ] Hide/show the main panel through settings and confirm there is no second instruction overlay in the scene.
+
+
+## Phase 2 observation trace gate
+
+The observation pipeline supports Mass and experimental Solo. Collect initial Solo traces using your own gameplay decisions before following experimental guidance.
+
+- [ ] Launch with `./gradlew run`, enable **Debug overlay and logs**, and locate `solo_observation_v1` lines in the RuneLite debug log. Disable debug and verify tick traces stop.
+- [ ] Visit all four corners and the safe preparation area. Compare corner names, brazier states and pyromancer states with scene entities; compare health percentages only when a health bar is visible.
+- [ ] Observe lit/unlit/broken transformations and healthy/downed pyromancers. Verify separate observation timestamps and that missing health bars read -1.
+- [ ] Move away or rebuild the scene: absent entities become UNKNOWN immediately, last-seen history expires after 8 ticks, and incomplete coverage reports `observedGlobalLit=-1` even when `loadedLit=0`.
+- [ ] Hop, disconnect, leave/re-enter, and finish/start a round. Verify old corner timestamps do not survive resets. Previously collected snapshots must retain their original values.
+- [ ] Record manual solo drain/recovery cycles, remote lighting and HUD changes alongside the tick trace. Compare the current compass-layout HUD decoder against each physical brazier, including sprite states and hidden interfaces. No precise recovery countdown is inferred.
+- [ ] Confirm mass instructions, highlights and corner selection remain consistent with prior behavior while traces are enabled.
+
+
+## Full Solo guidance gate (pending live validation)
+
+- [ ] Mode defaults to Mass. Select Solo, verify Automatic follows nearby working corners after remote lighting, and test an explicit pinned corner from the opposite side of the arena. Changing mode clears owned cues and previous planner state.
+- [ ] Prepare with missing tools and no potions. Verify equipped torch/hammer/axe alternatives, knife overrides, the initial 24-dose reserve, mixing space, and Brew'ma without Druidic Ritual.
+- [ ] At 100% energy, follow opening routes to multiple corners. Every object, NPC, arrow and path must agree with the displayed destination, including when an entity is initially unloaded.
+- [ ] At ≤28%, stop remote maintenance. Above 35%, resume reducing until ≤28%; oscillation near 35% must not flicker between routes.
+- [ ] At ≤10% during sustain, leave extinguished braziers unlit and avoid maintenance that resumes drain. Fletch/gather/restock productively or show an explicit wait. Recovery timing must not be promised.
+- [ ] Hold recovery below 12%. Confirm three distinct observed ticks at or above 12% are required to resume, including after a loading gap.
+- [ ] A lit remote brazier prevents adding home drain during sustain. Unknown/stale global states suppress relighting; scene/HUD disagreement invalidates remote readings immediately.
+- [ ] A downed pyromancer is healed at the indicated destination before repair/light, with a spare personal warmth dose. At low warmth every phase restores or retreats first.
+- [ ] Drink doses during sustain: no trip for each dose; below eight doses in Points or four in XP, replenish toward 24 and repeat later. Full fuel bags feed for ingredient room where a lit brazier is available; otherwise explain the required space.
+- [ ] Compare Solo Points / Rewards and Firemaking XP, plus Always/Never fletch overrides. No Mass deadline or ending heuristic may terminate Solo gathering.
+- [ ] Reach the goal with carried fuel: feed it before switching to Finish. Earned points trigger finishing; raising the goal resumes sustain if no manual finish is latched.
+- [ ] Request Finish while chopping, fletching, feeding and recovering. Feed carried fuel before lighting additional braziers. After finishing is intentional, low-energy relights are permitted; sustain still forbids them at ≤10%. Maintain a stable pair of adjacent braziers, or only the working brazier at ≤10% run energy.
+- [ ] Simulate a rapid drop or another player lighting remotely. Feed carried fuel promptly at an observed lit brazier; do not identify an intruder from energy alone.
+- [ ] Lose the HUD temporarily: reassess, keep the finish latch, and preserve recovery intent. Verified completion/countdown clears the finish setting and the next round starts fresh.
+- [ ] Pause/resume and change settings mid-round. No notifications or cues while paused; automatic/pinned corner selection, the fixed goal and finish intent remain understandable.
+- [ ] Compare Normal, Minimal and Detailed Solo overlays at common scales. Show phase, energy and warmth; no Mass finish countdown appears.
+- [ ] Complete manual trace runs, then shadow guidance, then guided Solo rounds with recorded transitions. Record unexpected early endings, supplies, point totals and every guidance mismatch before calling Solo validated.
+
+
+## Strategy audit follow-up checks
+
+- [ ] In Points mode, a visibly damaged but standing working pyromancer triggers healing. While fletching, an observed injured remote pyromancer can be targeted; unknown/stale health cannot. Low run energy avoids remote trips.
+- [ ] In XP mode, damaged standing pyromancers do not interrupt the fuel loop; incapacitation does. During recovery, never heal a downed pyromancer at a lit or unknown-state brazier to restore drain.
+- [ ] Fletch at roots or while moving without a mandatory brazier-adjacency trip. The preparation area still routes into the arena. Mass positioning rules remain unchanged.
+- [ ] Opening destination persists while Automatic changes working corners mid-walk. Routine gathering then uses the local working corner.
+- [ ] Full fuel bag, no potions, unlit working brazier: above the sustain floor with a healthy pyro and tools, relight/repair and feed to make room. In recovery, or with a downed pyro and no dose, explicitly request inventory space instead.
+- [ ] An intentional finish at 5–10% relights the selected brazier without waiting for energy to recover. Unknown global coverage still blocks relighting.
+- [ ] Finishing with two maintained braziers does not route to a third/fourth merely because the other corners are unlit. Confirm run energy is read as a percentage and depleted run chooses one working brazier.
+
+## Northern gap routing
+
+- [ ] In Solo with Show walking path enabled and at least 60 base and current Agility, travel between the back two braziers in both directions. The line follows all three manual jumps when shorter than walking around. Check the pillar landing tiles and interaction footprints against the scene.
+- [ ] Below 60 Agility, with Agility drained below 60, or in Mass, use the normal walking route. Changing eligibility updates the line without moving.
+- [ ] Short same-side trips stay on foot. Missing/unloaded gap tiles do not draw a jump. Disable paths, pause guidance or leave the region and confirm the route clears.

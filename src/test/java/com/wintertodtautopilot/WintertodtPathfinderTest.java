@@ -50,4 +50,11 @@ public class WintertodtPathfinderTest
         int[][] unloaded = new int[2][1]; unloaded[1][0] = 0x1000000;
         assertTrue(WintertodtPathfinder.find(unloaded, new Point(0, 0), 1, 0, 1, 0, false).isEmpty());
     }
+    @Test public void prefersShortWalkOverSlowJumps()
+    {
+        java.util.List<Point> jumps = java.util.Arrays.asList(new Point(1, 1), new Point(3, 1));
+        List<Point> path = WintertodtPathfinder.find(new int[5][3], new Point(0, 1), 4, 1, 4, 1, false, jumps);
+        assertEquals(5, path.size());
+        assertTrue(path.contains(new Point(2, 1)));
+    }
 }

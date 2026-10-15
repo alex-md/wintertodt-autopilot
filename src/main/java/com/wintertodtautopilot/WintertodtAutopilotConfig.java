@@ -5,7 +5,7 @@ import net.runelite.client.config.*;
 @ConfigGroup("wintertodtautopilot")
 public interface WintertodtAutopilotConfig extends Config
 {
-    @ConfigSection(name = "Your plan", description = "Start with Balanced and Automatic. Supplies and batch sizes adapt as you play.", position = 0)
+    @ConfigSection(name = "Your plan", description = "Choose Mass or experimental Solo, then your strategy and goal. Supplies and batch sizes adapt as you play.", position = 0)
     String plan = "plan";
     @ConfigSection(name = "Warmth", description = "Optional recovery thresholds. The defaults suit mass worlds.", position = 1, closedByDefault = true)
     String warmth = "warmth";
@@ -20,10 +20,27 @@ public interface WintertodtAutopilotConfig extends Config
         description = "Pause all guidance and notifications, including warmth warnings. Uncheck to resume. This choice is saved.", section = plan)
     default boolean pauseGuidance() { return false; }
 
-    @ConfigItem(position = 0, keyName = "strategy", name = "Strategy", description = "Balanced: all-round play. Firemaking XP: feed roots. Points / Rewards: more kindling. Low Attention: fewer task changes.", section = plan)
+    @ConfigItem(position = -2, keyName = "mode", name = "Mode",
+        description = "Mass or experimental Solo guidance. Solo assumes you chose an empty world; it cannot guarantee exclusive control.", section = plan)
+    default WintertodtMode mode() { return WintertodtMode.MASS; }
+
+    @ConfigItem(position = 6, keyName = "soloStrategy", name = "Solo strategy",
+        description = "Points / Rewards fletches roots. Firemaking XP feeds roots. Fletch roots can override either choice.", section = plan)
+    default SoloStrategy soloStrategy() { return SoloStrategy.POINTS; }
+
+    @ConfigItem(position = 4, keyName = "soloPointGoal", name = "Solo point goal",
+        description = "Solo finishes when this many points are earned. Carried fuel must be fed first. This is a score target, not a reward-cap estimate.", section = plan)
+    @Range(min = 500, max = 100000)
+    default int soloPointGoal() { return 5000; }
+
+    @ConfigItem(position = 5, keyName = "finishSoloRound", name = "Finish this Solo round",
+        description = "Finish the current Solo round early. Once requested, it stays active until the round ends, you change mode or hop worlds.", section = plan)
+    default boolean finishSoloRound() { return false; }
+
+    @ConfigItem(position = 0, keyName = "strategy", name = "Strategy", description = "Mass strategy. Balanced: all-round play. Firemaking XP: feed roots. Points / Rewards: more kindling. Low Attention: fewer task changes.", section = plan)
     default WintertodtStrategy strategy() { return WintertodtStrategy.MASS_BALANCED; }
 
-    @ConfigItem(position = 1, keyName = "workingCorner", name = "Working brazier", description = "Leave Automatic selected to follow your established corner. Choose a brazier only to stay at a specific corner.", section = plan)
+    @ConfigItem(position = 1, keyName = "workingCorner", name = "Working brazier", description = "Automatic follows your nearby working corner in Mass and Solo, with a margin to prevent switching back and forth. Choose a brazier only to stay at a specific corner.", section = plan)
     default WorkingCorner workingCorner() { return WorkingCorner.AUTOMATIC; }
 
     @ConfigItem(position = 2, keyName = "pointGoal", name = "Reward goal", description = "500 points secures a reward. Guidance continues toward the next threshold after reaching your goal; carried fuel must be fed to count.", section = plan)
@@ -53,7 +70,7 @@ public interface WintertodtAutopilotConfig extends Config
     @ConfigItem(position = 11, keyName = "showHintArrow", name = "Show hint arrow", description = "Show an arrow when another plugin or the game has no active arrow", section = guidance)
     default boolean showHintArrow() { return true; }
 
-    @ConfigItem(position = 12, keyName = "showPath", name = "Show walking path", description = "Draw a route through loaded walkable tiles to the current target", section = guidance)
+    @ConfigItem(position = 12, keyName = "showPath", name = "Show walking path", description = "Draw a route to the current target. Solo can use the northern gap at 60 Agility; you click each jump yourself.", section = guidance)
     default boolean showPath() { return false; }
 
     @ConfigItem(position = 7, keyName = "showOverlay", name = "Show main overlay", description = "Movable next-action panel", section = guidance)
@@ -78,7 +95,7 @@ public interface WintertodtAutopilotConfig extends Config
     @Range(min = 1, max = 60)
     default int inactivitySeconds() { return 6; }
 
-    @ConfigItem(position = 30, keyName = "debug", name = "Debug overlay and logs", description = "Show observed state and log reasons when objectives change", section = advanced)
+    @ConfigItem(position = 30, keyName = "debug", name = "Debug overlay and logs", description = "Show observed state, log objective changes and per-tick corner observation traces", section = advanced)
     default boolean debug() { return false; }
 
     @ConfigItem(position = 13, keyName = "highlightStandingTiles", name = "Highlight standing tiles", description = "Optional floor marker for the destination; off by default.", section = guidance)

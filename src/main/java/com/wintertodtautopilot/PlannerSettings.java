@@ -13,7 +13,10 @@ public class PlannerSettings
     public static PlannerSettings from(WintertodtAutopilotConfig config)
     {
         int restore = Math.max(1, Math.min(100, config.restoreWarmth()));
-        return new PlannerSettings(config.strategy(), config.pointGoal(), config.fletchMode(),
+        WintertodtStrategy strategy = config.mode() == WintertodtMode.SOLO
+            ? config.soloStrategy() == SoloStrategy.FIREMAKING_XP ? WintertodtStrategy.MASS_XP : WintertodtStrategy.MASS_POINTS
+            : config.strategy();
+        return new PlannerSettings(strategy, config.pointGoal(), config.fletchMode(),
             restore, Math.max(1, Math.min(restore, config.emergencyWarmth())));
     }
     public boolean fletch(WintertodtSnapshot s)

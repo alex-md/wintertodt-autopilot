@@ -1,518 +1,85 @@
 # Phase 2: Solo mode
 
-Research started 13 October 2026. This is a design and validation plan; Solo mode is not enabled in the plugin.
+Research started 13 October 2026. Implementation added 14 October 2026. Solo is available as **Solo (experimental)** in built-in settings; live validation remains pending. Mass remains the default.
 
-## Findings and evidence
+## Using Solo
 
-The current mass planner cannot safely become a Solo planner by changing batch sizes. It prioritizes relighting the local brazier and uses low energy to trigger finishing. A Solo planner sometimes needs the opposite decision: leave a brazier unlit and continue gathering while energy recovers.
+1. Choose an empty world yourself, then select **Mode → Solo (experimental)**. Visible player count does not prove exclusive control of the arena.
+2. Choose **Solo strategy**: Points / Rewards fletches, Firemaking XP feeds roots. The existing Fletch roots override applies to both. The Mass strategy and Reward goal settings continue to apply only to Mass.
+3. Set **Solo point goal** (default 5,000). This is a fixed earned-score target, not an estimate of reward capacity. Carried fuel is shown separately and must be fed before it counts. Raising this goal can resume sustain after an automatic finish decision.
+4. Leave Working brazier on Automatic to follow your nearby working corner, including after opening/finish routes visit another corner. Chopping, fletching and routine feeding use that corner. Selection has a distance margin to avoid flickering near the center and respects intentional movement toward a clicked brazier/root. Select a specific corner to keep the routine pinned there.
+5. To finish early, enable **Finish this Solo round**. The request latches for the current observed round; unchecking the setting does not cancel a latched request. Verified completion or a verified countdown clears the request. Changing mode, hopping worlds or logging out clears it too. Scene loading and temporary connection loss preserve latched intent while clearing observations. Low warmth still takes priority.
 
-Sources inspected:
+You perform every interaction. This implementation does not control clicks, dodge attacks, extinguish braziers, or guarantee that a lit brazier will go out before energy reaches zero.
 
-- [Wintertodt strategies](https://oldschool.runescape.wiki/w/Wintertodt/Strategies), retrieved through its [raw source](https://oldschool.runescape.wiki/w/Wintertodt/Strategies?action=raw) on 13 October 2026. The normal web reader failed; a direct HTTPS fetch of the raw page succeeded. This is community gameplay documentation, not a verified client contract.
-- [Solo Helper source, pinned at c5761f0](https://github.com/aquaosrs/wintertodt-solo-helper/tree/c5761f0224c834b79d76c0f1b25b7ce4964a2211), specifically `WintertodtBrazier`, `WintertodtSoloHelperPlugin`, and `WintertodtSoloHelperOverlay`. The brazier renderer gates relighting by energy, inventory and main/secondary brazier choice. Its widget parsing and numeric NPC/object IDs require independent verification. No code copied.
-- This repository's `WintertodtDecisionEngine`, `WintertodtRoundForecast`, `WintertodtObjectTracker`, `WintertodtNpcTracker`, `WintertodtSnapshot`, and `WintertodtSupplyPlan`.
+## Implemented controller
 
-Gameplay evidence from the strategy page:
+`WintertodtPlanner` separates `WintertodtDecisionEngine` (Mass) from `WintertodtSoloEngine`. Both use the same warmth/retreat safety policy. Solo uses its own energy observations and supply loop; it never uses the Mass finishing budget to stop gathering.
 
-| Observation | Design implication |
+| Phase | Behavior |
 | --- | --- |
-| Feeding fuel earns points but does not speed energy loss. | Track fuel conversion separately from energy control. |
-| With no lit braziers, energy recovers; the first recovery has a random delay. A lit brazier prevents recovery. | Observe direction and brazier coverage; do not display a precise recovery countdown. |
-| Opening guidance reduces energy to roughly 20–30%, then concentrates on one brazier. | Use separate opening and sustain phases. |
-| Below roughly 8%, another relight can end the round unexpectedly. | Treat a lower relight boundary as a conservative guard, never a guarantee. |
-| The page recommends the southwest corner for movement efficiency and describes both points-focused and XP-focused Solo play. | Evaluate southwest as a Solo default; keep the player's objective explicit. |
-
-These are starting hypotheses for live validation. No fixed energy interval guarantees indefinite survival. Do not carry forward old guides' 13,500-point ceiling without checking current reward behavior.
-
-## Proposed experience
-
-The player selects **Solo** in the existing RuneLite settings and chooses a goal. Everything else should start with usable defaults. The overlay keeps the same one-action format as mass mode: “Light the southwest brazier,” “Let energy recover — fletch your roots,” or “Finish the round — light the next brazier.” Explain deliberate waiting so the player can distinguish it from a stalled guide.
-
-Use an explicit **Finish this round** control in built-in settings. Latch that request for the current round, reset it on a verified new round, and show its state clearly. Do not require the player to change several energy thresholds or infer how to leave sustain mode. A points goal must count earned points separately from carried fuel. A long session must not silently continue beyond the player's chosen goal.
-
-## Proposed phase model
-
-| Phase | Responsibility | Exit condition |
-| --- | --- | --- |
-| Prepare | Tools, warmth, enough ingredients and inventory room | Observed readiness |
-| Reduce energy | Route to selected additional braziers, heal where necessary | Energy enters the validated sustain band |
-| Sustain | Gather, fletch and feed; relight only when permitted | Goal/finish request, or recovery needed |
-| Recover energy | Avoid relighting; use productive actions where possible | Observed recovery above a separate upper boundary |
-| Finish | Feed carried fuel where practical and maintain drain | Verified completion |
-| Reassess | Explain missing or conflicting observations | Enough fresh observations to choose safely |
-
-Warmth recovery and emergency retreat retain priority in every phase. Use hysteresis and minimum observation periods to avoid repeatedly switching sustain/recovery after a single energy update. A player's change of intent must override a previous sustain latch.
-
-## Required implementation changes
-
-1. **Separate planners.** Add explicit Mass/Solo mode selection and a Solo state machine. Reuse safety and tool/supply objectives, inventory detection and presentation. Never silently select Solo from a small visible player count: loaded players do not establish exclusive control of the arena.
-2. **Observe every corner.** Add immutable per-corner brazier and pyromancer state with freshness/visibility metadata. `litBraziers` currently counts loaded objects, and one local state does not establish that all four braziers are out. Evaluate the four HUD indicators as a global source against live objects. Unknown coverage must remain unknown.
-3. **Target an explicit corner.** Object targeting currently anchors roots and braziers to the working corner. Opening/finishing needs a distinct objective destination so a remote lighting instruction cannot highlight the local brazier. Associate each remote pyromancer and path with that same destination.
-4. **Model recovery separately.** The existing forecast resets on energy increases or zero loaded lit braziers. That behavior suits mass finishing but is not a sustain controller. Keep it for mass mode; add trend observations and uncertain drain/recovery estimates for Solo.
-5. **Rework supplies.** The current 1–3 bottle reserve assumes a short mass round. Solo requires a phase-aware reserve and repeated restocking that accounts for pyromancer healing, inventory capacity and travel. Do not simply multiply the mass estimate or claim a reserve covers an unlimited session.
-6. **Handle other players and stale data.** Energy can change when another player lights an unseen brazier. Reassess unexplained drops, retain warmth guidance, and communicate uncertainty. Loading, hopping and lost HUD values must invalidate remote decisions.
-
-## First implementation slice
-
-Build read-only per-corner observations and a debug trace first. Record tick, phase, energy, visibility/freshness, all observed brazier/pyromancer states, destination, warmth, supplies, earned/carried points and reason for each phase change. Keep logs opt-in. Use these traces to build deterministic scenarios before exposing a Solo selector.
-
-Next implement prepare → opening → sustain → recovery with one selected home corner. Add explicit finishing only after the destination and global-state checks work. Defer optional roaming healing and run-energy optimizations until the basic loop is validated.
-
-## Validation gates
-
-- Verify current energy drain/recovery and observation coverage from every corner, including the safe preparation area. Record delayed recovery rather than assuming it failed.
-- Test low energy with one or more remote braziers lit, unknown remote states, a downed home pyromancer, and another player joining. No relight instruction may rely on unknown global state.
-- Replay energy oscillation around both boundaries. Confirm no flickering route changes or accidental use of the mass ending heuristic.
-- Test ingredient shortages, full inventories, no Druidic Ritual, depleted run energy, interrupted movement and low warmth during each phase.
-- Request finishing while chopping, fletching, feeding and recovering; verify destination, fuel conversion and request reset after completion.
-- Complete observed Solo rounds with recorded transitions and compare instructions against actual game state. Unit tests alone do not close this gate.
-
-Open questions: which global HUD indicators remain reliable throughout scene loads; how much hysteresis live variation needs; how to detect unsolicited remote lighting early enough; whether a points goal or a deliberate finish request should be the initial default. These decisions remain open until observation traces support them.
-
-## Component Architecture
-
-To support Solo mode without destabilizing the verified mass planner, the system isolates Solo logic behind a shared planner interface. Shared infrastructure—such as warmth tracking, local object detection, and baseline inventory parsing—remains in the core pipeline, while state evaluation and action selection fork into specialized engines.
-
-```
-                   ┌────────────────────────────────────────┐
-                   │        WintertodtPlugin (Core)         │
-                   └───────────────────┬────────────────────┘
-                                       │ emits Snapshot each tick
-                                       ▼
-                   ┌────────────────────────────────────────┐
-                   │      WintertodtSnapshotAggregator      │
-                   │  - Local Objects    - Inventory/Gear   │
-                   │  - Global Widgets   - Player Warmth    │
-                   │  - Corner Trackers  - Supply Tally     │
-                   └───────────────────┬────────────────────┘
-                                       │
-                    ┌──────────────────┴──────────────────┐
-                    ▼                                     ▼
-     ┌─────────────────────────────┐       ┌─────────────────────────────┐
-     │  WintertodtDecisionEngine   │       │   WintertodtSoloEngine      │
-     │        (Mass Mode)          │       │        (Solo Mode)          │
-     │ - Rapid energy burn         │       │ - Multi-corner observation  │
-     │ - Local brazier focus       │       │ - Energy band hysteresis    │
-     │ - Fixed batch heuristics    │       │ - Phase-driven action loops │
-     └──────────────┬──────────────┘       └──────────────┬──────────────┘
-                    │                                     │
-                    └──────────────────┬──────────────────┘
-                                       ▼
-                   ┌────────────────────────────────────────┐
-                   │        WintertodtActionEnvelope        │
-                   │  - Primary Action   - Target Tile/Obj  │
-                   │  - Secondary Note   - Urgency Tier     │
-                   └────────────────────────────────────────┘
-```
-
-### 1. Corner Observation Tracker (`WintertodtCornerTracker`)
-
-Mass mode only requires awareness of the player's immediate corner. Solo mode requires an explicit world model representing all four corners (`SW`, `SE`, `NW`, `NE`).
-
-Each corner instance maintains:
-- **Brazier state**: `UNLIT`, `BURNING`, `BROKEN`, or `UNKNOWN`.
-- **Pyromancer state**: `ALIVE` (with hitpoint percentage), `INCAPACITATED`, or `UNKNOWN`.
-- **Observation source**: `DIRECT_SCENE` (object/NPC is loaded in the local client scene) or `HUD_WIDGET` (inferred from arena status bar icons).
-- **Freshness**: Game tick of the last direct scene or widget update. Any observation older than 8 ticks (4.8 seconds) without a corroborating HUD pulse degrades to stale.
-
-```java
-public enum BrazierCorner {
-    SOUTH_WEST,
-    SOUTH_EAST,
-    NORTH_WEST,
-    NORTH_EAST;
-}
-
-public final class CornerObservation {
-    private final BrazierCorner corner;
-    private final BrazierStatus brazierStatus;
-    private final PyromancerStatus pyromancerStatus;
-    private final int pyromancerHealthPercent;
-    private final ObservationSource source;
-    private final int lastObservedTick;
-
-    // Immutable representation; updated each tick via scanner merge
-}
-```
-
-#### HUD vs. Scene Reconciliation
-- When the player is stationed in the SW corner, the NE corner objects are beyond standard render distance.
-- The top-level Wintertodt HUD widgets provide binary alive/broken/burning indicators for remote corners.
-- **Rule**: Direct scene entities override HUD widgets. If direct scene data is unavailable, HUD widget state is accepted, but flagged as low-fidelity (e.g., widget indicates "lit", but cannot confirm exact repair state if it was broken immediately prior).
-- If neither scene nor widget provides data (e.g., during scene rebuild or widget redraw delays), the corner status transitions to `UNKNOWN`, triggering safety-first fallback logic.
-
----
-
-### 2. Solo Energy Controller & Hysteresis (`WintertodtSoloEnergyModel`)
-
-The energy controller prevents catastrophic round completions and avoids instruction flickering by enforcing an asymmetric band model with deadbands.
-
-```
- Energy %
-  100% ┌────────────────────────────────────────────────────────┐
-       │ OPENING DRAIN PHASE                                    │
-       │ Light 3-4 braziers to drop Wintertodt energy rapidly.  │
-   30% ├────────────────────────────────────────────────────────┤ ◄── Upper Sustain Bound
-       │ SUSTAIN PHASE                                          │
-       │ Hold 1 lit brazier (home). Gather, fletch, feed roots. │
-       │ Energy fluctuates slowly based on pyromancer uptime.   │
-   15% ├────────────────────────────────────────────────────────┤ ◄── Recovery Trigger Bound
-       │ RECOVERY PHASE                                         │
-       │ Extinguish / do not relight home brazier.              │
-       │ Pyromancer must stay alive. Convert fuel or chop.      │
-   10% ├────────────────────────────────────────────────────────┤ ◄── Critical Relight Floor
-       │ SAFETY LOCKOUT                                         │
-       │ Never relight any brazier under any circumstance.      │
-    0% └────────────────────────────────────────────────────────┘
-```
-
-#### Threshold Configurations and Invariants
-
-| Boundary | Default Value | Purpose | Invariant Rule |
-| --- | --- | --- | --- |
-| **Opening Cutoff** | 28% | Stops initial multi-brazier burn. | Transition to Sustain immediately once energy $\le 28\%$. Extinguish/allow remote braziers to die. |
-| **Recovery Trigger** | 15% | Initiates unlit phase. | Home brazier must **not** be relit when energy falls below this mark. |
-| **Recovery Exit** | 24% | Exits recovery back to sustain. | Energy must rise **above** 24% before relighting the home brazier is permitted. Deadband between 15% and 24% prevents single-tick flip-flopping. |
-| **Relight Hard Floor** | 10% | Round-loss safeguard. | Absolute software interlock: zero relight recommendations are generated if energy $\le 10\%$, even if the user manually presses finish. |
-| **Finish Target** | User-defined or Finish toggle | Triggers final energy burn. | Lights all available braziers and feeds carried roots until Wintertodt reaches 0%. |
-
----
-
-### 3. Supply and Warmth Planner (`WintertodtSoloSupplyPlan`)
-
-Solo rounds last significantly longer (typically 40–55 minutes for high-point runs) than 3-minute mass rounds. The supply manager must budget for sustained attrition:
-
-1. **Rejuvenation Potion Reserves**:
-   - Mass mode requires only 1–3 doses.
-   - Solo mode models potion consumption against two sinks:
-     - **Personal Warmth/Hitpoints**: Periodic ambient cold damage and brazier shattering.
-     - **Pyromancer Sustenance**: Healing the home pyromancer when downed or low on health.
-   - Restock trip threshold: If remaining unfinished potion doses fall below 4 *and* inventory contains fewer than 2 unpicked Bruma herbs during a safe window (energy stable in Sustain band), recommend a harvest/concoction cycle before resuming fuel processing.
-
-2. **Inventory Partitioning**:
-   - Fixed slots: Axe, Tinderbox, Knife, Hammer (or equivalents/wearable variants).
-   - Dynamic slots:
-     - $S_{\text{pot}}$: Active rejuvenation potions (typically 3–5 slots of 4-dose potions).
-     - $S_{\text{herb}}$: Reserve Bruma herbs (1–2 slots).
-     - $S_{\text{free}}$: Working capacity for Bruma roots and fletched kindling ($28 - \text{fixed} - S_{\text{pot}} - S_{\text{herb}}$).
-   - If free slots fall below 10 due to excessive potion hoarding, generate a restock rebalance instruction.
-
----
-
-## State Machine Specification
-
-The solo engine runs a deterministic finite state machine (FSM) evaluated once per client tick.
-
-```
-                          ┌──────────────┐
-                          │   PREPARE    │
-                          └──────┬───────┘
-                                 │ Round starts (Boss energy = 100%)
-                                 ▼
-                          ┌──────────────┐
-             ┌───────────►│ REDUCE ENERGY│◄───────────┐
-             │            └──────┬───────┘            │
-             │                   │ Energy <= 28%      │ Energy > 35%
-             │                   ▼                    │ (e.g. stalled)
-             │            ┌──────────────┐            │
-             │            │   SUSTAIN    ├────────────┘
-             │            └──────┬───────┘
-             │                   │ Energy <= 15%
-             │                   ▼
-             │            ┌──────────────┐
-             │            │RECOVER ENERGY│
-             │            └──────┬───────┘
-             │                   │ Energy >= 24%
-             │                   ▼
-             │               [SUSTAIN]
-             │
-             │ User triggers finish OR Point goal met
-             └───────────────────┬────────────────────┐
-                                 ▼                    ▼
-                          ┌──────────────┐     ┌──────────────┐
-                          │    FINISH    │     │  REASSESS /  │
-                          └──────────────┘     │   RETREAT    │
-                                               └──────────────┘
-```
-
-### Detailed State Contracts
-
-#### 1. `PREPARE`
-- **Entry Conditions**: Player is in Wintertodt arena or staging area before round starts; boss energy is uninitialized or 100% with doors closed.
-- **Planner Goals**:
-  - Verify axe, knife, hammer, and tinderbox presence.
-  - Guide player to harvest Bruma herbs and take empty potion vials from supply crates.
-  - Produce initial potion stock (minimum 4 doses).
-  - Position player at the chosen Home Corner (SW recommended).
-- **Exit Condition**: Game start event detected (doors open, boss energy active).
-
-#### 2. `REDUCE_ENERGY` (Opening)
-- **Entry Conditions**: Round active; boss energy > 28%.
-- **Planner Goals**:
-  - Light Home Corner brazier immediately.
-  - Route player along southern perimeter to light the adjacent corner brazier (SE) if reachable safely.
-  - Maintain awareness of remote brazier health; if pyromancers fall, do not cross center paths to heal unless local brazier is burning.
-  - Accelerate initial burn to enter safe sustain band within 90–120 seconds.
-- **Exit Condition**: Boss energy $\le 28\%$.
-
-#### 3. `SUSTAIN`
-- **Entry Conditions**: Boss energy $\le 28\%$ and $> 15\%$; finish not requested.
-- **Planner Goals**:
-  - Keep Home Corner brazier lit.
-  - If Home brazier breaks: repair immediately (earns points and maintains pyromancer safety).
-  - If Home pyromancer falls: heal with rejuvenation potion immediately.
-  - If Home brazier extinguishes: relight immediately (only if energy $> 12\%$).
-  - When Home brazier is burning and pyromancer is healthy:
-    - If inventory has capacity: chop Bruma roots.
-    - If inventory is full of roots: fletch into kindling (for point maximization) or feed directly (for XP maximization, governed by user setting).
-    - If inventory contains kindling/roots and energy is rising toward 28%: feed brazier to regulate energy.
-- **Exit Conditions**:
-  - Boss energy $\le 15\%$ $\rightarrow$ `RECOVER_ENERGY`.
-  - Finish requested or point target reached $\rightarrow$ `FINISH`.
-  - Boss energy unexpectedly rises above $35\%$ $\rightarrow$ `REDUCE_ENERGY`.
-
-#### 4. `RECOVER_ENERGY`
-- **Entry Conditions**: Boss energy $\le 15\%$; finish not requested.
-- **Planner Goals**:
-  - **Do NOT relight the brazier.** If it goes out or breaks, leave it alone.
-  - If Home pyromancer is down, **heal them immediately**. (Incapacitated pyromancers prevent ambient energy recovery).
-  - Direct player to productive downtime activities:
-    - Fletch existing inventory of roots into kindling.
-    - Harvest Bruma herbs and brew replacement potions.
-    - Chop roots if inventory permits, but do not interact with the brazier.
-- **Exit Conditions**:
-  - Boss energy $\ge 24\%$ $\rightarrow$ `SUSTAIN`.
-  - Boss energy falls $\le 8\%$ with an active lit brazier (abnormal condition: intruder or accidental light) $\rightarrow$ emergency notification to suppress all interactions.
-
-#### 5. `FINISH`
-- **Entry Conditions**: Explicit user toggle (`Finish this round` = true) OR (`soloGoalType == POINTS` AND `earnedPoints + carriedPotentialPoints >= targetPoints`).
-- **Planner Goals**:
-  - Feed all remaining carried kindling and roots to the Home brazier.
-  - If Home brazier is out and energy $> 10\%$: relight.
-  - If Home brazier is running and adjacent braziers are accessible, route to adjacent braziers to extinguish Wintertodt completely.
-  - Prevent unnecessary gathering or fletching actions.
-- **Exit Conditions**: Boss energy reaches 0% (Round End event fired).
-
-#### 6. `REASSESS` (Emergency / Retreat)
-- **Entry Conditions**:
-  - Player health falls below emergency threshold ($\le 25\%$ or 2 consecutive hits from death).
-  - Player running low on warmth supplies while brazier breaks.
-  - More than 2 corners report `UNKNOWN` state for $> 12$ ticks.
-- **Planner Goals**:
-  - Cease skilling interactions.
-  - Consume potion for hitpoints immediately.
-  - Move away from damaged brazier hazard area (1-tile blast zone).
-  - Provide explanatory overlay: *"Supplies low / Scene desynced — Stabilizing before resuming."*
-- **Exit Condition**: Health recovered above safety threshold and observation state restored.
-
----
-
-## Configuration Specification
-
-To be integrated into the existing `WintertodtConfig` interface:
-
-```java
-@ConfigSection(
-    name = "Solo Mode",
-    description = "Settings for solo Wintertodt planning and automation guidance",
-    position = 10,
-    closedByDefault = false
-)
-String soloSection = "soloSection";
-
-@ConfigItem(
-    keyName = "plannerMode",
-    name = "Planner Mode",
-    description = "Switch between Mass round planner and Solo round planner",
-    section = soloSection,
-    position = 1
-)
-default WintertodtPlannerMode plannerMode() {
-    return WintertodtPlannerMode.MASS;
-}
-
-@ConfigItem(
-    keyName = "soloGoalType",
-    name = "Solo Goal",
-    description = "Determines when the solo planner recommends finishing the encounter",
-    section = soloSection,
-    position = 2
-)
-default SoloGoalType soloGoalType() {
-    return SoloGoalType.POINTS;
-}
-
-@Range(min = 500, max = 13500)
-@ConfigItem(
-    keyName = "soloTargetPoints",
-    name = "Target Points",
-    description = "Target points before triggering the Finish phase (Max 13,500 for roll cap)",
-    section = soloSection,
-    position = 3
-)
-default int soloTargetPoints() {
-    return 13500;
-}
-
-@ConfigItem(
-    keyName = "soloHomeCorner",
-    name = "Home Corner",
-    description = "The working corner for gathering, fletching, and brazier maintenance",
-    section = soloSection,
-    position = 4
-)
-default BrazierCorner soloHomeCorner() {
-    return BrazierCorner.SOUTH_WEST;
-}
-
-@ConfigItem(
-    keyName = "soloPrioritizeKindling",
-    name = "Fletch Kindling",
-    description = "Prioritize fletching for maximum points and construction/firemaking efficiency",
-    section = soloSection,
-    position = 5
-)
-default boolean soloPrioritizeKindling() {
-    return true;
-}
-
-@ConfigItem(
-    keyName = "soloFinishNow",
-    name = "Finish This Round",
-    description = "Manual latch: immediately exit sustain/recovery and finish the encounter",
-    section = soloSection,
-    position = 6
-)
-default boolean soloFinishNow() {
-    return false;
-}
-```
-
----
-
-## Overlay & UX Contract
-
-Solo mode introduces distinct situational states that must be communicated without cluttering the screen or confusing the player. The overlay uses a 3-tier presentation hierarchy:
-
-```
-┌────────────────────────────────────────────────────────┐
-│ WINTERTODT SOLO: SUSTAIN (SW CORNER)                   │
-├────────────────────────────────────────────────────────┤
-│ Primary:   Fletch Bruma Roots (Kindling: 14/22)        │
-│ Energy:    21% [STABLE] (Drain: -0.0% / 10s)           │
-│ Points:    8,420 / 13,500 (Carried: +320)              │
-│ Supplies:  4 Doses Potion | 2 Herbs                    │
-├────────────────────────────────────────────────────────┤
-│ Pyromancer: 82% HP (Healthy)                           │
-│ Home Brazier: BURNING (Safe to process fuel)           │
-└────────────────────────────────────────────────────────┘
-```
-
-### Visual Cue Specifications
-
-1. **Phase Header**:
-   - Shows active mode (`SOLO`), current phase (`OPENING`, `SUSTAIN`, `RECOVER`, `FINISH`), and selected home corner.
-   - Distinct color coding:
-     - `REDUCE_ENERGY`: Cyan / Light Blue.
-     - `SUSTAIN`: Soft Green.
-     - `RECOVER_ENERGY`: Amber / Warning Yellow.
-     - `FINISH`: Bright Violet.
-     - `REASSESS`: Alert Red.
-
-2. **Energy Rate Indicator**:
-   - Shows current boss energy with a 10-second trend vector:
-     - `[DRAINING]` (downward red arrow): Boss losing health ($\ge 1\%$ per 10s).
-     - `[RECOVERING]` (upward green arrow): Boss gaining health ($\ge 1\%$ per 10s).
-     - `[STABLE]` (horizontal gray dash): No net change over the rolling 10-second window.
-
-3. **Point Tally with Carried Potential**:
-   - Explicitly displays: `Earned + Carried Potential = Projected Total`.
-   - Formula:
-     $$\text{Carried Potential} = (\text{Roots} \times 10) + (\text{Kindling} \times 25)$$
-   - When `Projected Total` meets `soloTargetPoints`, the overlay triggers a golden highlight and updates primary instruction to *"Goal reached: Feed fuel and finish."*
-
-4. **Deliberate Wait Messaging**:
-   - When the planner enters `RECOVER_ENERGY` with no carried roots to fletch and potions fully stocked, the overlay must **never** be blank.
-   - Explicit string: `"Stand by: Energy recovering to 24% (Do not relight)"`. This prevents users from assuming the plugin has stalled or disconnected.
-
----
-
-## Edge Case Handling & Mitigations
-
-### 1. Unsolicited Player Interference (The "Crashed Solo" Problem)
-- **Symptom**: Another player enters the arena unannounced and lights the SE or NW brazier, causing boss energy to plummet rapidly while the player is at 12% energy in `RECOVER_ENERGY`.
-- **Detection**:
-  - Boss energy rate of drop exceeds single-brazier capacity ($\Delta \text{Energy} > 2\%$ per 6 ticks).
-  - Remote brazier widget changes to `BURNING` without local instruction.
-- **Mitigation**:
-  - Immediately flag state as `EXTERNAL_INTERFERENCE`.
-  - Override recovery loop: switch directly to `FINISH` or point dumping.
-  - Warn player with high-priority banner: *"Intruder detected: Energy dropping rapidly. Dump fuel immediately."*
-
-### 2. Pyromancer Incapacitation Cascades
-- **Symptom**: The Home pyromancer falls to 0 HP while the brazier is broken. The player is low on health and cannot repair the brazier due to falling snow interruptions.
-- **Detection**: Pyromancer status is `INCAPACITATED`, brazier status is `BROKEN`, player hitpoints are falling.
-- **Mitigation Sequence**:
-  1. Priority 1: Drink rejuvenation potion if player HP $< 40\%$.
-  2. Priority 2: Use rejuvenation potion dose on fallen pyromancer.
-  3. Priority 3: Only after pyromancer is standing, click brazier with hammer to repair.
-  4. Priority 4: Re-evaluate boss energy before relighting.
-
-### 3. Supply Starvation (Zero Herbs, Zero Potions)
-- **Symptom**: Round extends past 45 minutes; all picked herbs have been converted and drunk; player sustains damage and runs out of potions while pyromancer falls.
-- **Mitigation**:
-  - If total remaining doses $= 0$ and pyromancer is incapacitated:
-    - Lock out brazier repair/relight completely.
-    - Path player to the Bruma herb patch immediately, harvest 3 herbs, fetch vials from crate, and brew.
-    - Suppress all chopping and fletching until supply buffer is re-established ($\ge 4$ doses).
-
-### 4. Client Desynchronization and Loading Stalls
-- **Symptom**: Scene reload or RuneLite memory prune clears remote game objects.
-- **Mitigation**:
-  - All decisions check `observation.getLastObservedTick()`.
-  - If `currentTick - lastObservedTick > 8`, fall back strictly to conservative behavior: assume remote braziers are unlit unless the HUD status bar explicitly signals otherwise.
-  - Never issue a brazier lighting command if the target brazier object reference is `null` or unrendered; path to target tile first, re-acquire object, verify state, then execute interaction.
-
----
-
-## Test & Validation Plan
-
-Before opening a pull request to expose the Solo toggle in user configurations, the following automated and live test batteries must pass.
-
-### Automated Headless Test Matrix
-
-Deterministic snapshots collected from telemetry traces will be fed through the `WintertodtSoloEngine` test harness:
-
-| Test ID | Scenario | Injected Condition | Expected Engine Output |
-| --- | --- | --- | --- |
-| `TC-SOLO-01` | Normal Opening | Energy = 100%, inventory has basic tools, 4 potions. | Recommend: Light Home Brazier. |
-| `TC-SOLO-02` | Opening Cutoff | Energy reaches 28%. | Transition from `REDUCE_ENERGY` to `SUSTAIN`. Stop routing to secondary braziers. |
-| `TC-SOLO-03` | Sustain Loop (Fletch) | Energy = 22%, Brazier burning, 10 roots in inventory, fletch enabled. | Recommend: Fletch Bruma Roots. |
-| `TC-SOLO-04` | Sustain Loop (Feed) | Energy = 26%, Brazier burning, 20 kindling, energy rising. | Recommend: Feed Kindling to Brazier. |
-| `TC-SOLO-05` | Recovery Transition | Energy drops from 16% to 14%. Brazier breaks. | Transition to `RECOVER_ENERGY`. Do NOT recommend brazier repair/relight. |
-| `TC-SOLO-06` | Recovery Hysteresis | Energy rises from 15% to 20% during recovery. | Remain in `RECOVER_ENERGY`. Brazier relight must remain suppressed until $\ge 24\%$. |
-| `TC-SOLO-07` | Recovery Exit | Energy rises to 25% with 0 braziers lit. | Transition back to `SUSTAIN`. Recommend relighting Home Brazier. |
-| `TC-SOLO-08` | Critical Relight Lockout | Energy = 9%, Brazier unlit, player presses "Finish Now". | Suppress relight recommendation. Display warning banner regarding imminent defeat. |
-| `TC-SOLO-09` | Incapacitated Pyromancer | Energy = 18%, Pyromancer HP = 0, Potion doses = 3. | Recommend: Heal Pyromancer with Rejuvenation Potion. |
-| `TC-SOLO-10` | Supply Restock Trigger | Doses = 1, Herbs = 0, Energy stable at 22%. | Recommend: Harvest Bruma Herbs before next gathering cycle. |
-| `TC-SOLO-11` | Point Target Reached | Target = 13,500; Current = 13,200; Carried = 400 kindling pts. | Transition to `FINISH`. Recommend: Dump carried fuel and burn boss down. |
-
-### Live Verification Protocol
-
-1. **Trace Collection Run**:
-   - Complete 3 unassisted solo games with opt-in trace logging enabled.
-   - Record raw tick-by-tick logs containing: Game Tick, Energy %, Local HP, Pyromancer HP, Brazier State, Inventory Counts, and Active Actions.
-   - Verify that HUD widget states match actual physical states across all 4 corners without latency artifacts.
-
-2. **Shadow Run (Non-interfering)**:
-   - Run the plugin in Solo mode with overlay active, but perform actions manually based on player judgment.
-   - Flag every instance where the engine's primary recommendation differs from safe high-level solo play.
-   - Quantify instruction stability: zero flickering (more than 1 recommendation change across 2 consecutive ticks under steady conditions).
-
-3. **Active Guided Solo**:
-   - Follow plugin recommendations strictly from 100% to 0%.
-   - Success Criteria:
-     - 0 unexpected round failures (Wintertodt dying before target points reached).
-     - 0 player deaths.
-     - Supply restocks recommended with safe timing margins.
-     - Target score of 13,500 reached within expected tolerance ($\pm 250$ points).
+| Prepare | Acquire tools and an initial potion reserve; position at home before the round. |
+| Reduce energy | Maintain additional braziers at explicit destinations. Stop multi-corner maintenance at energy ≤28%. If energy later exceeds 35%, resume reducing until ≤28% again. |
+| Sustain | Gather, fletch and feed at home. Leave home unlit while another observed brazier is lit. |
+| Recover energy | Enter at energy ≤10%. Suppress maintenance that restores drain; fletch, gather, replenish supplies or heal observed pyromancers at unlit/broken braziers. Existing lit braziers can still accept fuel. |
+| Finish | Triggered by earned points reaching the fixed goal or the explicit finish request. Feed carried fuel first, then maintain two adjacent braziers. At ≤10% run energy, maintain only the working brazier. Low-energy relights are intentional in this phase. Stop gathering. |
+| Reassess | Explain unavailable signals/global coverage or a rapid energy drop. Feed existing fuel at an observed lit brazier when practical. No claim that another player caused a drop. |
+
+Recovery exits after **three distinct observations at or above 12%**, with a minimum observation interval. Attaching/reloading at ≤10% also enters recovery. Energy loss of more than 2 percentage points within six observed ticks triggers a fuel-feeding advisory during sustain/recovery; ordinary opening and intentional finishing are exempt; an intervening recovery increase ends that drain episode. Trend uses a rolling window of up to 17 ticks and remains unknown until enough observations exist. No precise recovery countdown is displayed.
+
+The sustain relight floor is **10%**, retaining a small margin above the strategy guide's approximate 8% warning. Recovery resumes at 12%, replacing the original 15% → 24% cycle that unnecessarily prolonged recovery. Finishing deliberately bypasses sustain's floor: ending the round is the chosen outcome. It still requires a directly observed destination and known global state before lighting. Thresholds remain implementation choices awaiting live tuning, not guarantees of indefinite sustain.
+
+Projected carried points can trigger a cash-out feed; they do not trigger finishing until earned points confirm the goal. Manual finishing interrupts chopping, fletching, feeding and recovery on the next game tick, subject to warmth safety and current destination/global observations.
+
+## Observations and destinations
+
+Every in-region snapshot has immutable per-corner brazier/pyromancer observations with independent source, scene visibility and last-observed tick. Health percentages are approximate client health-bar readings; unavailable health bars remain -1. History becomes stale after more than eight ticks. Historical freshness alone never establishes a current state.
+
+Brazier HUD readings use the RuneLite 1.13.1 named `WintStatus.BRAZIER1`–`BRAZIER4` widgets. Compass directions are derived from the current four-icon screen layout rather than old numeric child offsets. Only sprites 1397/1398/1399 decode as broken/unlit/lit. Hidden/missing widgets, invalid geometry, duplicate compass positions and unknown sprites remain unknown. Scene state wins; any scene/HUD disagreement suppresses remote HUD readings for that tick. These runtime rules have deterministic tests; their live correspondence still needs verification.
+
+`observedGlobalLitBraziers()` returns -1 unless all four distinct braziers have fresh current scene/HUD evidence. The existing loaded-scene count remains separate. Pyromancers require direct scene evidence; no unverified alive icon is accepted. Loading, hopping, disconnecting, leaving the region and round boundaries invalidate corner history.
+
+Every Solo objective carries its destination. Object, NPC, arrow and path resolution use that destination. A HUD observation alone cannot produce a remote repair/light instruction: the planner first routes to the corner, acquires the scene object and pyromancer, then rechecks the current energy/global coverage. Missing HUD during an ongoing round enters reassessment without treating it as verified completion or clearing the finish latch.
+
+## Northern gap route
+
+The optional walking line includes the northern gap in Solo when both base and current Agility are at least 60. It uses three bidirectional jumps at y=4023, through x=1627, 1629, 1631 and 1633. Each jump has a four-walking-step cost (approximately two running ticks), so a short walking route still wins. The path rechecks eligibility immediately when mode or Agility changes. Missing/unloaded pillar tiles suppress the jump; ordinary walking continues to obey scene collision flags. The intermediate pillars are transport landing tiles, not ordinary walking tiles.
+
+The player clicks each jump. The planner's destination stays on the intended brazier or pyromancer. No jumps or other interactions are automated.
+
+Requirement checked against [RuneLite's AgilityShortcut](https://github.com/runelite/runelite/blob/master/runelite-client/src/main/java/net/runelite/client/game/AgilityShortcut.java); landing coordinates and duration checked against the [Shortest Path transport data](https://github.com/Skretzo/shortest-path/blob/master/src/main/resources/transports/transports.tsv) on 15 October 2026. No source code was copied. Live landing/line alignment remains on the validation checklist.
+
+## Supplies
+
+Preparation and normal restocks aim for **24 doses (six bottles)**. Points mode starts a restock below eight doses to support frequent healing; XP mode starts below four. Finishing uses an eight-dose working reserve. Consuming one dose does not start another trip. A restock stays active until its target is met. These reserves cover a working interval and are repeatedly replenished; they do not promise to cover an entire long round.
+
+Tools honor equipped alternatives and fletching preferences. Ingredient collection leaves a mixing slot; existing ingredients can be mixed with a full bag. Brew'ma is used without Druidic Ritual. A full fuel inventory can be fed at an observed lit brazier to make supply room. If no brazier is lit, an observed, safely relightable working brazier can be maintained first to make feeding possible. Otherwise guidance explicitly asks for inventory space. Healing preserves a spare dose for personal warmth.
+
+Points mode heals directly observed damage at the working corner and considers injured remote pyromancers while fletching. Low run energy suppresses remote healing trips. XP mode waits for incapacitation to conserve doses. During recovery, healing opportunities are limited to known unlit/broken braziers so healing cannot restore drain. Unknown or stale health never creates a healing objective.
+
+Solo fletching does not require an adjacent-brazier positioning trip: roots can be fletched where the player is, including while moving. The safe preparation area still requires moving into the arena first. Gathering batches use available inventory capacity, limited by the remaining fixed goal. While waiting for energy recovery or a remote fire to expire, the planner continues a gathering batch before fletching instead of alternating one chopped root with one fletch.
+
+## Debug traces
+
+Launch with `./gradlew run` and enable **Debug overlay and logs**. One `solo_observation_v1` key/value line per in-region game tick records planner, Solo phase, phase-transition reason, finish request, energy/trend, warmth, home/destination, objective/reason, activity, supplies, earned/carried points, loaded/global lit counts and every corner's states/sources/visibility/timestamps/freshness. Disabled by default. Mass traces explicitly say `soloPhase=NOT_RUNNING`.
+
+The overlay shows Solo phase and energy trend, fixed goal progress, carried fuel and a latched finish request. It suppresses the Mass finish-time estimate in Solo. Minimal keeps phase, energy, goal and warmth visible.
+
+## Evidence and remaining validation
+
+Research sources:
+
+- [Wintertodt strategies](https://oldschool.runescape.wiki/w/Wintertodt/Strategies), retrieved as raw source on 13 October 2026 and checked online again on 14 October through the [indexed Wiki copy](https://osrsindex.com/wiki/wintertodt-strategies?site=osrs_wiki) (copied revision dated 28 July 2026; direct Wiki reading was blocked by robots.txt): fuel conversion is separate from energy drain; no lit braziers permits delayed recovery; opening reduces energy before concentrating at home. Community gameplay evidence requires live confirmation.
+- [Solo Helper source pinned at c5761f0](https://github.com/aquaosrs/wintertodt-solo-helper/tree/c5761f0224c834b79d76c0f1b25b7ce4964a2211), rechecked 14 October 2026: sprite semantics informed the HUD decoder. Its legacy child offsets and permissive unknown-pyromancer handling are not used. No source code copied.
+- [RuneLite 1.13.1 InterfaceID](https://github.com/runelite/runelite/blob/runelite-parent-1.13.1/runelite-api/src/main/java/net/runelite/api/gameval/InterfaceID.java): current named Wintertodt HUD components, also checked against the pinned dependency jar.
+
+Automated tests exercise full opening → sustain → recovery → cash-out → finish → next-round replay, oscillation, duplicate ticks, missing signals, partial/stale/HUD coverage, transformations, destination resolution, tools, mixing, full bags, repeated restocking, warmth safety, fixed goals and finish lifecycle. Rendering previews are synthetic.
+
+**Still pending:** compare HUD states to physical braziers from every corner and preparation area, collect manual Solo traces, observe delayed recovery and other-player interference, validate potion margins, follow guided Solo rounds and tune thresholds from those observations. Unit tests do not establish gameplay safety or close the live gate. Remote healing and run-energy decisions use observed data; frame-perfect fletching/healing combinations are not automated or guaranteed.
+
+See [live validation](LIVE_VALIDATION.md) for the manual checklist.
+
+
+## Strategy audit — 14 October 2026
+
+The online review confirmed that the original recovery band, downed-only Points healing, tiny reserves and four-corner finish circuit were planner choices that needed revision. The changes above cover those gaps. The guide prefers Southwest for a settled routine because of movement geometry; Automatic deliberately remains local per live user feedback, with Southwest available as an explicit choice. Opening still lights multiple braziers and stops remote maintenance around 28%. Optional third-brazier finishing and exact-tick healing remain manual choices rather than mandatory routes. See the live checklist before treating the revised controller as validated.

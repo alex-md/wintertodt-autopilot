@@ -3,7 +3,7 @@ package com.wintertodtautopilot;
 import net.runelite.api.gameval.ItemID;
 
 /** Deterministic tick planner. Emergency objectives never overwrite the normal batch. */
-public final class WintertodtDecisionEngine
+public final class WintertodtDecisionEngine implements WintertodtPlanner
 {
     private ObjectiveType normal;
     private int batchTarget;
@@ -44,23 +44,8 @@ public final class WintertodtDecisionEngine
             finishing = false;
             finishComplete = false;
         }
-        if (s.getRoundState() != RoundState.OUTSIDE && s.getRoundState() != RoundState.LOBBY
-            && s.getWarmth() >= 0 && s.getWarmth() <= settings.getRestoreWarmth()
-            && s.getCurrentActivity() != PlayerActivity.RESTORING_WARMTH)
-        {
-            boolean emergency = s.getWarmth() <= settings.getEmergencyWarmth();
-            if (s.getWarmthItem() >= 0)
-            {
-                return new WintertodtObjective(ObjectiveType.RESTORE_WARMTH,
-                    (emergency ? "LOW WARMTH - " : "") + (WintertodtConstants.doses(s.getWarmthItem()) > 0
-                        ? "Drink rejuvenation potion" : "Eat food to restore warmth"),
-                    "warmth_low", TargetKind.NONE, 1, emergency, s.getWarmthItem());
-            }
-            // Never keep skilling or propose a long supply trip without a usable restorative.
-            return new WintertodtObjective(ObjectiveType.RESTORE_WARMTH,
-                "Move to the safe lobby - no warmth supplies", "no_warmth_supplies",
-                TargetKind.DOOR, 0, true);
-        }
+        WintertodtObjective safety = WintertodtSafety.objective(s, settings);
+        if (safety != null) { return safety; }
 
         if (!s.active())
         {

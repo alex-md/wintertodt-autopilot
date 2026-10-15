@@ -1,46 +1,49 @@
 # Plugin Hub release checks
 
-Release: **0.1.1**, reviewed 13 October 2026. Updates the published manifest's source commit `79b527e9da79b9788f4ac6bc6c227c5be6ecc883`.
+Release: **0.2.0 — experimental Solo**, prepared for submission 15 October 2026.
 
-## Final changes
+## What changed
 
-- Removed the custom sidebar and floating scene-label overlay, including their classes, resources and previews.
-- Controls use RuneLite's built-in settings. Pause is saved and suppresses guidance and notifications, including emergency warmth alerts.
-- Normal guidance shows the action, observed progress, warmth and reward progress. Supply instructions name the item and remaining quantity.
-- Matching activity suppresses scene/inventory cues and owned arrows/routes. Interrupted fuel can pulse while relighting or repairs are needed; warmth retains priority.
-- Highlights use flame orange-yellow and gold. Walking paths and standing tiles default off; intermediate breadcrumb squares are removed. Existing saved preferences are retained.
-- Updated author metadata to `alex-md` and shortened the README. Solo mode remains research only.
-
-## Packaging and compatibility
-
-- Public source: [alex-md/wintertodt-autopilot](https://github.com/alex-md/wintertodt-autopilot).
-- Plugin name/entry point agree between metadata and `@PluginDescriptor`; description states that the player performs the clicks.
-- `version=0.1.1`, `build=standard`; no new runtime dependencies or custom production build steps.
-- Java 11 bytecode, built with Java 17 against RuneLite 1.13.1, matching the Hub's `runelite.version` at review time.
-- Root icon is a transparent 48 × 48 PNG below 256 KiB. Packaged warm-clothing data and both license notices are required in the jar.
-- Official Hub standard-build compatibility is checked separately using its Lombok 1.18.30 dependency and the Hub's RuneLite target. This checks compilation/packaging, not the Hub's API scanner or reviewer approval.
+- Added **Solo (experimental)** alongside the default Mass mode. Solo has its own strategies, fixed point goal, energy phases, repeat potion prep and early-finish setting.
+- Added per-corner brazier and pyromancer observations, HUD coverage checks and debug traces. Unknown observations stay unknown; carried fuel must be fed before it counts toward the goal.
+- Added level-aware northern gap routing to the optional walking line. Solo can use the three manual jumps with at least 60 base/current Agility, when shorter than walking around. Mass and lower-level players keep normal walking routes.
+- Kept controls in RuneLite settings and simplified the README's Solo setup and experimental notice. Existing pictures are unchanged.
+- Updated local RuneLite dependencies to **1.13.2**, matching the Hub's current target. No new runtime dependencies.
 
 ## Validation
 
-The final release review runs `./gradlew clean build previewOverlay --no-daemon --console=plain`, inspects the synthetic preview and clean jar, checks license/resource packaging and bytecode, and runs `git diff --check` before publishing the source commit. Final results:
+- `./gradlew clean build previewOverlay --no-daemon --console=plain`: **177 tests passed**, no failures, errors or skipped tests. The preview is synthetic and generated only under ignored build output.
+- Production sources compile and package with the official Hub standard-build template, its Lombok 1.18.30 dependency and RuneLite 1.13.2 in a separate temporary project. This does not run the Hub's API scanner or establish reviewer approval.
+- Local and standard-build jars include the plugin entry point, warm-clothing data and both legal notices. The existing listing icon stays at the repository root. Class files target Java 11.
+- Existing root icon meets the Hub's dimensions/size requirements. Packaged license copies match the root originals. README local links resolve and `git diff --check` passes.
 
-- Clean local build and preview generation passed: **116 tests, zero failures, errors or skipped tests**.
-- The final production sources compiled and packaged with the official standard-build template, Lombok 1.18.30 and the Hub's RuneLite 1.13.1 target in a separate temporary project.
-- Clean jar inspection confirmed required resources/notices, Java 11 bytecode, and absence of the removed sidebar/floating-label classes.
-- License copies match their root originals, icon dimensions/size are valid, README local links resolve, and `git diff --check` passed.
-- Reviewed the final synthetic panel/highlight preview. It is not a live gameplay screenshot.
-
-The user supplied live screenshots and iterative feedback on supplies and crowded-world presentation. The full [live checklist](LIVE_VALIDATION.md) is still incomplete; unit tests and synthetic previews are not substitutes for full live acceptance. Unverified checks remain unchecked.
+Solo still needs [live validation](LIVE_VALIDATION.md), including the HUD from all corners, energy recovery, potion margins, early finishing and northern gap alignment in both directions. Automated tests and a successful build do not close those checks. See [Solo implementation notes](SOLO_MODE_RESEARCH.md).
 
 ## Source review
 
-Production code observes state and displays guidance, highlights and notifications. Observed menu clicks track player activity; the overlay menu only opens configuration. There are no synthesized game actions, reflection, subprocesses, runtime downloads, network requests, filesystem writes or modifications to other plugins' configuration. Bundled resources use classpath streams. Owned hint arrows respect existing arrows.
+The plugin observes game state and provides guidance, highlights and notifications. The player performs every interaction, including shortcut jumps. It does not synthesize game actions, dodge attacks or guarantee a solo arena. Paths lead to the current interaction target and obey scene collision, apart from the explicit level-gated gap jumps. Pause suppresses guidance and notifications, including warmth alerts. Owned hint arrows respect existing arrows.
 
-Optional paths lead to interaction targets. They do not predict attacks or choose positions to dodge mechanics. The Hub's CI and maintainers still make the final compatibility and policy decisions.
+Production sources contain no runtime downloads, reflection, subprocesses, network requests or filesystem writes. Bundled resources use classpath streams. Configuration writes only clear this plugin's own finish request or open its settings.
 
-## Submission
+## Submission status
 
-Update only `plugins/wintertodt-autopilot` in [runelite/plugin-hub](https://github.com/runelite/plugin-hub), keeping the repository URL and pinning the full 40-character hash of the pushed source commit. The upstream Hub file was checked before preparing the update; no open update PR by this author was found at review time.
+The live Hub manifest still pins **0.1.1**, source commit `7ba2afd3e1afa8424dc8e3399e93f9943f52758d`. [PR #18518](https://github.com/runelite/plugin-hub/pull/18518) merged on 14 October 2026. No open update PR by alex-md was found on 15 October.
+
+The 0.2.0 update is submitted by pinning the pushed source commit in a new Hub manifest PR. Full live Solo validation remains pending; submission and a successful build do not establish gameplay validation or maintainer approval.
+
+Submission steps:
+
+1. Review the release and outstanding live checks, then commit and push the complete source to [alex-md/wintertodt-autopilot](https://github.com/alex-md/wintertodt-autopilot).
+2. Update only `plugins/wintertodt-autopilot` in a separate Hub branch. Keep `repository=https://github.com/alex-md/wintertodt-autopilot.git` and set `commit=` to the full 40-character hash of the pushed release commit.
+3. Open the update PR with the description below and check the Hub CI result. Maintainer review and merge remain separate from local package checks.
+
+Suggested title: **wintertodt-autopilot: experimental Solo mode (0.2.0)**
+
+Suggested description:
+
+> Adds an experimental Solo mode with its own point goal, energy management, potion prep and early-finish option. The optional walking line can use the northern gap at 60 Agility. Mass stays the default, and the player still does every click.
+>
+> The README explains setup and the experimental status. Local build and 177 tests pass against RuneLite 1.13.2, and production sources compile with the Hub standard-build template. Full live Solo validation is still pending.
 
 ## References
 
@@ -49,4 +52,4 @@ Update only `plugins/wintertodt-autopilot` in [runelite/plugin-hub](https://gith
 - [Rejected features and APIs](https://github.com/runelite/runelite/wiki/Rejected-or-Rolled-Back-Features)
 - [Plugin Hub review scope](https://github.com/runelite/runelite/wiki/Plugin-Hub-Review)
 
-Original icon artwork was generated with the image tool. Project and adapted RuneLite animation-table attribution remain in `LICENSE`, `THIRD_PARTY_NOTICES` and the packaged copies under `META-INF`.
+Original icon artwork was generated with the image tool. Existing project and RuneLite attribution remains in `LICENSE`, `THIRD_PARTY_NOTICES` and the packaged copies under `META-INF`.

@@ -1,20 +1,26 @@
 package com.wintertodtautopilot;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.PriorityQueue;
 import net.runelite.api.CollisionDataFlag;
 import net.runelite.api.Point;
 
-/** Bounded scene BFS. Cardinal steps avoid diagonal corner cutting entirely. */
+/** Bounded scene search. Walking uses cardinal steps; only explicit shortcut edges cross gaps. */
 public final class WintertodtPathfinder
 {
     private static final int UNLOADED = 0x1000000;
     private static final int BLOCKED = CollisionDataFlag.BLOCK_MOVEMENT_FULL | UNLOADED;
     private WintertodtPathfinder() { }
     public static List<Point> find(int[][] flags, Point start, int minX, int minY, int maxX, int maxY, boolean adjacent)
+    {
+        return find(flags, start, minX, minY, maxX, maxY, adjacent, Collections.emptyList());
+    }
+    public static List<Point> find(int[][] flags, Point start, int minX, int minY, int maxX, int maxY,
+        boolean adjacent, List<Point> shortcut)
     {
         if (flags == null || flags.length == 0 || flags[0] == null) { return Collections.emptyList(); }
         int width = flags.length, height = flags[0].length;
@@ -23,11 +29,15 @@ public final class WintertodtPathfinder
         if (minX < 0 || minY < 0 || maxX >= width || maxY >= height) { return Collections.emptyList(); }
         int[] parents = new int[width * height]; Arrays.fill(parents, -1);
         int origin = start.getX() * height + start.getY(); parents[origin] = origin;
-        ArrayDeque<Integer> queue = new ArrayDeque<>(); queue.add(origin);
+        int[] costs = new int[parents.length]; Arrays.fill(costs, Integer.MAX_VALUE); costs[origin] = 0;
+        PriorityQueue<int[]> queue = new PriorityQueue<>(Comparator.comparingInt(entry -> entry[1]));
+        queue.add(new int[]{origin, 0});
         int[] dx = {1, 0, -1, 0}, dy = {0, 1, 0, -1};
         while (!queue.isEmpty())
         {
-            int current = queue.removeFirst(), x = current / height, y = current % height;
+            int[] entry = queue.remove();
+            int current = entry[0], x = current / height, y = current % height;
+            if (entry[1] != costs[current]) { continue; }
             if (goal(x, y, minX, minY, maxX, maxY, adjacent))
             {
                 List<Point> path = new ArrayList<>();
@@ -41,10 +51,33 @@ public final class WintertodtPathfinder
             for (int direction = 0; direction < 4; direction++)
             {
                 int nx = x + dx[direction], ny = y + dy[direction];
-                if (!inside(nx, ny, width, height) || parents[nx * height + ny] >= 0
+                if ((flags[x][y] & BLOCKED) != 0 || !inside(nx, ny, width, height) || costs[nx * height + ny] <= costs[current] + 1
                     || !canStep(flags, x, y, nx, ny)) { continue; }
                 parents[nx * height + ny] = current;
-                queue.addLast(nx * height + ny);
+                costs[nx * height + ny] = costs[current] + 1;
+                queue.add(new int[]{nx * height + ny, costs[nx * height + ny]});
+            }
+            for (int i = 0; i < shortcut.size(); i++)
+            {
+                Point from = shortcut.get(i);
+                if (from.getX() != x || from.getY() != y) { continue; }
+                for (int j : new int[]{i - 1, i + 1})
+                {
+                    if (j < 0 || j >= shortcut.size()) { continue; }
+                    Point to = shortcut.get(j);
+                    int nx = to.getX(), ny = to.getY();
+                    // A jump takes roughly two ticks: prefer walking when it is already shorter.
+                    // Pillars may block normal walking. Only the two banks need walkable tiles;
+                    // intermediate pillars are reached and left exclusively through these jumps.
+                    if (!inside(nx, ny, width, height) || (flags[nx][ny] & UNLOADED) != 0
+                        || (flags[x][y] & UNLOADED) != 0
+                        || (j == 0 || j == shortcut.size() - 1) && (flags[nx][ny] & BLOCKED) != 0
+                        || (i == 0 || i == shortcut.size() - 1) && (flags[x][y] & BLOCKED) != 0
+                        || costs[nx * height + ny] <= costs[current] + 4) { continue; }
+                    int next = nx * height + ny;
+                    parents[next] = current; costs[next] = costs[current] + 4;
+                    queue.add(new int[]{next, costs[next]});
+                }
             }
         }
         // Never fall back to a line through an unreachable obstacle.

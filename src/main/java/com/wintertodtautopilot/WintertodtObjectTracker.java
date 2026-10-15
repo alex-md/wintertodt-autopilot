@@ -67,6 +67,15 @@ public class WintertodtObjectTracker
     public TileObject target(TargetKind kind, WorldPoint player)
     {
         WorldPoint anchor = kind == TargetKind.BRAZIER || kind == TargetKind.ROOTS ? corner.location() : player;
+        return targetAt(kind, anchor);
+    }
+    public TileObject target(TargetKind kind, WorldPoint player, WorkingCorner destination)
+    {
+        if (destination == WorkingCorner.AUTOMATIC) { return target(kind, player); }
+        return targetAt(kind, kind == TargetKind.BRAZIER || kind == TargetKind.ROOTS ? destination.location() : player);
+    }
+    private TileObject targetAt(TargetKind kind, WorldPoint anchor)
+    {
         TileObject result = null;
         int distance = Integer.MAX_VALUE;
         for (TileObject object : objects)
@@ -81,12 +90,21 @@ public class WintertodtObjectTracker
     public int resolvedId(TileObject object)
     {
         ObjectComposition composition = client.getObjectDefinition(object.getId());
+        if (composition == null) { return -1; }
         if (composition.getImpostorIds() != null) { composition = composition.getImpostor(); }
         return composition == null ? -1 : composition.getId();
     }
     public BrazierState brazier(WorldPoint player)
     {
-        TileObject object = target(TargetKind.BRAZIER, player);
+        return brazierState(target(TargetKind.BRAZIER, player));
+    }
+    public BrazierState brazierAt(WorkingCorner destination)
+    {
+        if (destination == WorkingCorner.AUTOMATIC) { return BrazierState.UNKNOWN; }
+        return brazierState(targetAt(TargetKind.BRAZIER, destination.location()));
+    }
+    private BrazierState brazierState(TileObject object)
+    {
         if (object == null) { return BrazierState.UNKNOWN; }
         switch (resolvedId(object))
         {

@@ -38,9 +38,24 @@ All options are in RuneLite settings → **Wintertodt Autopilot**. No extra side
 
 Automatic fletching follows your strategy. You can override it in settings. Once you reach a fixed reward goal, guidance keeps working toward the next 500-point threshold.
 
-## Keep in mind
+## Solo mode (experimental)
 
-Mass worlds only for now. [Solo mode is phase 2](docs/SOLO_MODE_RESEARCH.md).
+Solo is new and still needs testing in game. Expect rough edges. Start on an empty world and keep an eye on the energy and your supplies.
+
+1. Set **Mode** to **Solo (experimental)**.
+2. Pick **Solo strategy**: **Points / Rewards** for kindling, or **Firemaking XP** for roots.
+3. Set your **Solo point goal**. The default is **5,000**. Fuel in your inventory only counts once you've fed it.
+4. Leave **Working brazier** on **Automatic** to work near your current corner, or pick a specific brazier to stay there.
+
+The plugin helps light the opening braziers, lower the energy, then keep the round going while you earn points. When energy gets low, it'll tell you to leave braziers unlit so it can recover. Once you've earned your goal, it'll guide you through finishing the round.
+
+Want to end it early? Enable **Finish this Solo round**. Once requested, it stays active for that round, even if you uncheck it. It clears when the round ends, you change mode, hop worlds or log out.
+
+If you turn on **Show walking path**, Solo routes can use the northern gap between the back two braziers at **60 Agility**, when it's quicker than walking around. You still need to click each jump yourself. Below 60, the line takes the walking route.
+
+Solo hasn't passed the full [live validation checklist](docs/LIVE_VALIDATION.md) yet. [Solo notes](docs/SOLO_MODE_RESEARCH.md) cover the current behavior and what still needs checking.
+
+## Keep in mind
 
 Finish times and potion reserves are estimates. You still need to watch the game and react to attacks. Walking cues don't dodge for you.
 
@@ -52,7 +67,7 @@ Finish times and potion reserves are estimates. You still need to watch the game
 
 ## Build locally
 
-Use Java 17. The project targets Java 11 and uses RuneLite 1.13.1.
+Use Java 17. The project targets Java 11 and uses RuneLite 1.13.2.
 
 ```sh
 ./gradlew build
