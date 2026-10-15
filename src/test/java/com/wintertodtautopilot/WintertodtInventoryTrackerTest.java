@@ -43,6 +43,27 @@ public class WintertodtInventoryTrackerTest
         when(cake.getNote()).thenReturn(1); change.setTheoretical(20); tracker.fill(b); assertEquals(0, b.build().getFoodCount());
     }
 
+    @Test public void fletchingKnifeCountsAsKnifeOnlyInInventoryButSpeedsFletchingEitherWay() throws Exception
+    {
+        Client client = mock(Client.class); WintertodtInventoryTracker tracker = new WintertodtInventoryTracker();
+        TrackerTestSupport.inject(tracker, "client", client);
+        TrackerTestSupport.inject(tracker, "itemStats", mock(ItemStatChanges.class));
+        ItemComposition other = mock(ItemComposition.class);
+        when(other.getNote()).thenReturn(-1); when(other.getName()).thenReturn("Other");
+        when(client.getItemDefinition(anyInt())).thenReturn(other);
+        ItemContainer bag = mock(ItemContainer.class), worn = mock(ItemContainer.class);
+        when(client.getItemContainer(InventoryID.INV)).thenReturn(bag);
+        when(client.getItemContainer(InventoryID.WORN)).thenReturn(worn);
+        when(bag.getItems()).thenReturn(new Item[]{new Item(ItemID.FLETCHING_KNIFE, 1)});
+        when(worn.getItems()).thenReturn(new Item[0]);
+        WintertodtSnapshot.WintertodtSnapshotBuilder b = WintertodtSnapshot.builder();
+        tracker.fill(b); assertTrue(b.build().isHasKnife()); assertTrue(b.build().isHasFletchingKnife());
+        // Wielded in the off-hand it still speeds fletching, but an inventory knife is needed to start.
+        when(bag.getItems()).thenReturn(new Item[0]);
+        when(worn.getItems()).thenReturn(new Item[]{new Item(ItemID.FLETCHING_KNIFE, 1)});
+        tracker.fill(b); assertFalse(b.build().isHasKnife()); assertTrue(b.build().isHasFletchingKnife());
+    }
+
     @Test public void warmthCountsOnlyEquippedItemsAndCapsAtFour() throws Exception
     {
         Client client = mock(Client.class); WintertodtInventoryTracker tracker = new WintertodtInventoryTracker();

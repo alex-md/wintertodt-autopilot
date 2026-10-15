@@ -30,7 +30,7 @@ public class WintertodtInventoryTracker
         Item[] items = inventory == null ? new Item[0] : inventory.getItems();
         int roots = 0, kindling = 0, food = 0, doses = 0, herbs = 0, unfinished = 0, occupied = 0;
         int bestFood = -1, potion = -1, smallestDose = 5;
-        boolean knife = false, hammer = false, tinder = false, torch = false, axe = false;
+        boolean knife = false, fletchingKnife = false, hammer = false, tinder = false, torch = false, axe = false;
         for (Item item : items)
         {
             int id = item.getId();
@@ -45,7 +45,8 @@ public class WintertodtInventoryTracker
             doses += d * q;
             if (d > 0 && d < smallestDose) { potion = id; smallestDose = d; }
             if (validFood(id)) { food += q; if (bestFood < 0) { bestFood = id; } }
-            knife |= id == ItemID.KNIFE;
+            knife |= knife(id);
+            fletchingKnife |= id == ItemID.FLETCHING_KNIFE;
             hammer |= hammer(id);
             tinder |= id == ItemID.TINDERBOX;
             torch |= torch(id);
@@ -57,6 +58,7 @@ public class WintertodtInventoryTracker
             for (Item item : equipment.getItems())
             {
                 if (item.getId() < 0) { continue; }
+                fletchingKnife |= item.getId() == ItemID.FLETCHING_KNIFE;
                 hammer |= hammer(item.getId());
                 torch |= torch(item.getId());
                 axe |= axe(item.getId());
@@ -66,7 +68,7 @@ public class WintertodtInventoryTracker
         b.brumaRoots(roots).brumaKindling(kindling).foodCount(food).rejuvenationDoses(doses)
             .unfinishedPotionCount(unfinished).brumaHerbCount(herbs).freeSlots(28 - occupied)
             .warmthItem(potion >= 0 ? potion : bestFood).potionItem(potion)
-            .hasKnife(knife).hasHammer(hammer).hasTinderbox(tinder).hasBrumaTorch(torch).hasAxe(axe)
+            .hasKnife(knife).hasFletchingKnife(fletchingKnife).hasHammer(hammer).hasTinderbox(tinder).hasBrumaTorch(torch).hasAxe(axe)
             .warmClothingCount(warmItems < 0 ? -1 : Math.min(4, warmItems));
     }
 
@@ -97,6 +99,8 @@ public class WintertodtInventoryTracker
         return name.contains(" axe") && !name.contains("battleaxe") && !name.contains("pickaxe")
             && !name.contains("thrownaxe") && !name.contains("broken") && !name.contains("head");
     }
+    // Inventory only: a wielded fletching knife still needs a knife in the inventory to start fletching.
+    private static boolean knife(int id) { return id == ItemID.KNIFE || id == ItemID.FLETCHING_KNIFE; }
     private static boolean hammer(int id)
     {
         return id == ItemID.HAMMER || id == ItemID.IMCANDO_HAMMER || id == ItemID.IMCANDO_HAMMER_OFFHAND;
