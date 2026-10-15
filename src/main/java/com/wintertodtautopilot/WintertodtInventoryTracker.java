@@ -45,7 +45,7 @@ public class WintertodtInventoryTracker
             doses += d * q;
             if (d > 0 && d < smallestDose) { potion = id; smallestDose = d; }
             if (validFood(id)) { food += q; if (bestFood < 0) { bestFood = id; } }
-            knife |= id == ItemID.KNIFE;
+            knife |= knife(id);
             hammer |= hammer(id);
             tinder |= id == ItemID.TINDERBOX;
             torch |= torch(id);
@@ -97,6 +97,8 @@ public class WintertodtInventoryTracker
         return name.contains(" axe") && !name.contains("battleaxe") && !name.contains("pickaxe")
             && !name.contains("thrownaxe") && !name.contains("broken") && !name.contains("head");
     }
+    // Inventory only: a wielded fletching knife still needs a knife in the inventory to start fletching.
+    private static boolean knife(int id) { return id == ItemID.KNIFE || id == ItemID.FLETCHING_KNIFE; }
     private static boolean hammer(int id)
     {
         return id == ItemID.HAMMER || id == ItemID.IMCANDO_HAMMER || id == ItemID.IMCANDO_HAMMER_OFFHAND;
