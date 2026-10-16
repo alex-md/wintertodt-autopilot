@@ -14,7 +14,7 @@ public final class WintertodtOverlayPreview
 {
     public static void main(String[] args) throws Exception
     {
-        BufferedImage image = new BufferedImage(1220, 1550, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage image = new BufferedImage(1220, 2000, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = image.createGraphics();
         graphics.setColor(new Color(34, 38, 41)); graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
         graphics.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13)); graphics.setColor(Color.LIGHT_GRAY);
@@ -91,6 +91,14 @@ public final class WintertodtOverlayPreview
                     @Override public boolean finishSoloRound() { return index == 2; }
                 });
         }
+        graphics.setColor(Color.LIGHT_GRAY);
+        graphics.drawString("Reward secured stays visible as the target advances (Normal / Minimal / Solo)", 20, 1560);
+        render(graphics, 20, 1580, base.toBuilder().points(500).build(), fletch,
+            new WintertodtAutopilotConfig() { });
+        render(graphics, 320, 1580, base.toBuilder().points(1000).build(), fletch,
+            new WintertodtAutopilotConfig() { @Override public OverlayDetail overlayDetail() { return OverlayDetail.MINIMAL; } });
+        render(graphics, 620, 1580, base.toBuilder().points(500).build(), fletch,
+            new WintertodtAutopilotConfig() { @Override public WintertodtMode mode() { return WintertodtMode.SOLO; } });
         graphics.dispose();
         Path path = Path.of("build", "preview", "overlays.png"); Files.createDirectories(path.getParent());
         ImageIO.write(image, "png", path.toFile());

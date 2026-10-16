@@ -30,6 +30,7 @@ public class WintertodtSnapshot
     @Builder.Default int warmthItem = -1;
     @Builder.Default int potionItem = -1;
     boolean hasKnife;
+    boolean hasFletchingKnife;
     boolean hasHammer;
     boolean hasTinderbox;
     boolean hasBrumaTorch;

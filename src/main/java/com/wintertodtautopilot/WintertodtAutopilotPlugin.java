@@ -23,6 +23,9 @@ import net.runelite.client.events.ConfigChanged;
 @Slf4j
 public class WintertodtAutopilotPlugin extends Plugin
 {
+    static final String UPDATE_NOTICE_VERSION = "0.2.1";
+    static final String UPDATE_NOTICE_KEY = "lastUpdateNotice";
+    static final String UPDATE_NOTICE = "Wintertodt Autopilot 0.2.1: fletching knife support, better alerts, reward milestone feedback, and separate Mass/Solo settings.";
     @Inject private Client client;
     @Inject private ClientThread clientThread;
     @Inject private ConfigManager configManager;
@@ -96,10 +99,19 @@ public class WintertodtAutopilotPlugin extends Plugin
             default: break;
         }
     }
+    private void showUpdateNotice()
+    {
+        // Run anywhere after login, including for players who have paused gameplay guidance.
+        if (UPDATE_NOTICE_VERSION.equals(configManager.getConfiguration("wintertodtautopilot", UPDATE_NOTICE_KEY)))
+        { return; }
+        client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", UPDATE_NOTICE, null);
+        configManager.setConfiguration("wintertodtautopilot", UPDATE_NOTICE_KEY, UPDATE_NOTICE_VERSION);
+    }
     @Subscribe
     public void onGameTick(GameTick event)
     {
         if (client.getGameState() != GameState.LOGGED_IN) { return; }
+        showUpdateNotice();
         Player player = client.getLocalPlayer();
         boolean inRegion = player != null && player.getWorldLocation().getRegionID() == WintertodtConstants.REGION;
         if (!inRegion)

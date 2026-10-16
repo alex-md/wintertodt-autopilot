@@ -10,6 +10,10 @@ Instructions stay in one movable panel. The highlighted target shows where to cl
 
 You still do every click. The plugin doesn't play for you.
 
+## Latest update — 0.2.1
+
+Fletching knife support, independent warmth and round-start alerts, clearer reward milestones, and separate Mass/Solo settings. Everyone gets a short chatbox notice after logging in, once per RuneLite profile. The notice still appears if gameplay guidance is paused.
+
 ## Get started
 
 1. Install **Wintertodt Autopilot** from RuneLite's Plugin Hub.
@@ -17,7 +21,7 @@ You still do every click. The plugin doesn't play for you.
 3. Leave the strategy on **Mass - Balanced**, with fletching and working brazier on **Automatic**.
 4. Follow the instruction and highlighted target. Missing tools or potions? It'll walk you through getting them.
 
-All options are in RuneLite settings → **Wintertodt Autopilot**. No extra sidebar. Walking paths and floor markers are off by default. Right-click the overlay to open settings, or hold **Alt** to move it.
+All options are in RuneLite settings → **Wintertodt Autopilot**. Mass and Solo each have their own settings section; mode, working brazier and fletching preferences are shared. No extra sidebar. Walking paths and floor markers are off by default. Right-click the overlay to open settings, or hold **Alt** to move it.
 
 ## What it does
 
@@ -25,7 +29,10 @@ All options are in RuneLite settings → **Wintertodt Autopilot**. No extra side
 - Gets the highlights out of the way while you're working. Interrupted actions bring them back, with pulsing fuel when the brazier goes out.
 - Keeps track of warmth and guides potion prep, repairs, relighting, and pyromancer healing.
 - Adjusts batches around your reward goal and the time left in the round.
-- Keeps earned points separate from fuel you still need to feed.
+- Keeps earned points separate from fuel you still need to feed. Once you earn 500 points, the panel keeps **Reward secured** visible alongside your next target.
+- Recognizes a carried fletching knife and includes its faster batches in Mass finish estimates. A wielded fletching knife gives the speed benefit, but you still need a knife in your inventory to start fletching.
+
+Enable **Notify reward secured** for a one-time alert when earned points cross 500 each round. It defaults to off. Emergency warmth has its own notification cooldown, so idle alerts cannot delay it; round-start alerts are independent too.
 
 ## Pick your goal
 

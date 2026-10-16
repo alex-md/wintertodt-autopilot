@@ -10,6 +10,8 @@ Status: **in progress; final full validation pending**. Validate mass behavior b
 - [ ] Confirm base scene IDs and current impostor IDs across lit, unlit and broken brazier transitions.
 - [ ] Confirm pyromancer healthy/down transformations and correct local association.
 - [ ] Equip main/offhand bruma torches and Imcando hammers; confirm tool availability independently from knife/tinderbox.
+- [ ] Carry a fletching knife instead of a knife: no knife crate prompt, and the fletching knife is highlighted for fletching. Wielded alone, the knife crate is still requested.
+- [ ] With a fletching knife carried or wielded, confirm late-round fletching batches finish in time at 1.2 seconds per root after the first.
 - [ ] Check ordinary axe variants and food, including cake at full Hitpoints and food that heals less than 4 HP.
 - [ ] Confirm potion dose counts and mixing with and without Druidic Ritual.
 - [ ] Enter with only tools: obtain recommended potions before chopping; check herb and vial targets.
@@ -157,3 +159,19 @@ The observation pipeline supports Mass and experimental Solo. Collect initial So
 - [ ] In Solo with Show walking path enabled and at least 60 base and current Agility, travel between the back two braziers in both directions. The line follows all three manual jumps when shorter than walking around. Check the pillar landing tiles and interaction footprints against the scene.
 - [ ] Below 60 Agility, with Agility drained below 60, or in Mass, use the normal walking route. Changing eligibility updates the line without moving.
 - [ ] Short same-side trips stay on foot. Missing/unloaded gap tiles do not draw a jump. Disable paths, pause guidance or leave the region and confirm the route clears.
+
+
+## Reward feedback, alerts and settings
+
+- [ ] Trigger an idle notification, then reach emergency warmth within 30 seconds. The warmth alert arrives immediately; repeated warmth alerts still respect their own cooldown and episode gate.
+- [ ] Trigger another alert just before the five-second round countdown. The round-start notification still arrives once.
+- [ ] Reach 500 earned points: Normal and Minimal show Reward secured alongside the next target. Carried fuel never secures a reward. Solo retains its fixed goal label.
+- [ ] Enable Notify reward secured: crossing 500 announces it once per round. A simultaneous warmth warning takes priority; reward feedback waits until warmth recovers. Joining/reconnecting above 500 does not announce an old milestone.
+- [ ] Pause guidance and verify all alerts stay muted. Resume without replaying a reward earned while paused.
+- [ ] Open native plugin settings: shared mode/brazier/fletching choices are in Your plan; separate Mass and Solo sections contain their respective strategies and goals. Existing saved choices remain intact.
+
+
+## Update notice
+
+- [ ] With no 0.2.1 notice marker saved, log in anywhere: one short update message appears in the chatbox. It also appears when enabling the plugin while already logged in and when gameplay guidance is paused.
+- [ ] Wait several ticks, hop, log out/in and restart RuneLite: the message does not repeat in that RuneLite profile. A separate profile receives its own notice.

@@ -68,7 +68,9 @@ public class WintertodtSoloEngineTest
     @Test public void fullRootBatchFletchesAndThenFeeds()
     {
         sustain(); roots = 20; free = 0;
-        assertEquals(ObjectiveType.FLETCH, next().getType());
+        WintertodtObjective fletch = next();
+        assertEquals(ObjectiveType.FLETCH, fletch.getType());
+        assertTrue(fletch.getItemIds().contains(ItemID.FLETCHING_KNIFE));
         roots = 0; kindling = 20;
         assertEquals(ObjectiveType.FEED, next().getType());
         points = 500; kindling = 0; free = 20;

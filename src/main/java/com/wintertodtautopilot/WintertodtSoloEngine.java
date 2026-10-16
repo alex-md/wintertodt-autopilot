@@ -273,7 +273,7 @@ public final class WintertodtSoloEngine implements WintertodtPlanner
         if (s.getPlayerLocation() != null && s.getPlayerLocation().getY() < 3988)
         { return position(home, "Leave the preparation area to fletch", "solo_fletch_inside"); }
         return action(ObjectiveType.FLETCH, "Fletch " + s.getBrumaRoots() + " roots", reason,
-            TargetKind.NONE, home, s.getBrumaRoots(), false, ItemID.KNIFE, ItemID.WINT_BRUMA_ROOT);
+            TargetKind.NONE, home, s.getBrumaRoots(), false, ItemID.KNIFE, ItemID.FLETCHING_KNIFE, ItemID.WINT_BRUMA_ROOT);
     }
     private WintertodtObjective chop(WintertodtSnapshot s, int count, String reason)
     { return action(ObjectiveType.CHOP, "Chop " + count + " bruma root" + (count == 1 ? "" : "s"), reason, TargetKind.ROOTS, home, count, false); }

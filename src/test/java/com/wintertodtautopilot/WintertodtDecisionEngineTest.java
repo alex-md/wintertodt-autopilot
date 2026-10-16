@@ -66,6 +66,14 @@ public class WintertodtDecisionEngineTest
         assertEquals(ObjectiveType.RESTORE_WARMTH, decide(s.warmth(30).warmthItem(ItemID.CAKE)).getType());
         assertEquals(ObjectiveType.FLETCH, decide(s.warmth(65)).getType());
     }
+    @Test public void fletchingHighlightsEitherKnife()
+    {
+        WintertodtObjective result = decide(active().points(25).brumaRoots(19).freeSlots(5));
+        assertEquals(ObjectiveType.FLETCH, result.getType());
+        assertTrue(result.getItemIds().contains(ItemID.KNIFE));
+        assertTrue(result.getItemIds().contains(ItemID.FLETCHING_KNIFE));
+        assertTrue(result.getItemIds().contains(ItemID.WINT_BRUMA_ROOT));
+    }
     @Test public void downPyromancerBeforeRelight()
     {
         assertEquals(ObjectiveType.HEAL_PYROMANCER, decide(active().localBrazierState(BrazierState.UNLIT)

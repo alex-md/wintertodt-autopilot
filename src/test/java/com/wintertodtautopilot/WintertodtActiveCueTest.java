@@ -53,6 +53,7 @@ public class WintertodtActiveCueTest
         WintertodtHintArrow arrow = mock(WintertodtHintArrow.class);
         WintertodtPathTracker paths = mock(WintertodtPathTracker.class);
         TrackerTestSupport.inject(plugin, "client", client);
+        TrackerTestSupport.inject(plugin, "configManager", mock(net.runelite.client.config.ConfigManager.class));
         TrackerTestSupport.inject(plugin, "tracker", tracker);
         TrackerTestSupport.inject(plugin, "objects", objects);
         TrackerTestSupport.inject(plugin, "arrow", arrow);

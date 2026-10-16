@@ -58,7 +58,12 @@ public class WintertodtOverlay extends OverlayPanel
             if (plugin.isSoloFinishRequested()) { body("Finish this round requested"); }
             line("Energy / trend", percent(s.getWintertodtEnergy()) + " / " + plugin.getSoloEnergyTrend(), Color.LIGHT_GRAY);
         }
-        line("Reward progress", number(s.getPoints()) + " / " + target, s.rewardThresholdReached() ? new Color(130, 200, 150) : Color.WHITE);
+        if (s.rewardThresholdReached())
+        {
+            line("Reward secured", "500 points", new Color(130, 200, 150));
+        }
+        line(soloMode ? "Solo goal" : s.rewardThresholdReached() ? "Next target" : "Reward progress",
+            number(s.getPoints()) + " / " + target, Color.WHITE);
         if (config.overlayDetail() != OverlayDetail.MINIMAL)
         {
             if (s.inventoryPoints() > 0) { line("Fuel to feed", "+" + s.inventoryPoints() + " pts", Color.LIGHT_GRAY); }

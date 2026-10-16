@@ -299,7 +299,7 @@ public final class WintertodtDecisionEngine implements WintertodtPlanner
         }
         return new WintertodtObjective(ObjectiveType.FLETCH,
             urgent ? "Fletch " + count + " roots, then feed" : s.isInterrupted() ? "Continue fletching" : "Fletch " + count + " roots",
-            reason, TargetKind.NONE, count, urgent, ItemID.KNIFE, ItemID.WINT_BRUMA_ROOT);
+            reason, TargetKind.NONE, count, urgent, ItemID.KNIFE, ItemID.FLETCHING_KNIFE, ItemID.WINT_BRUMA_ROOT);
     }
 
     private WintertodtObjective prepare(WintertodtSnapshot s, PlannerSettings settings)

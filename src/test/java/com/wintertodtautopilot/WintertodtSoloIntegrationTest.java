@@ -17,6 +17,7 @@ public class WintertodtSoloIntegrationTest
         Client client = mock(Client.class); Player player = mock(Player.class);
         WintertodtStateTracker tracker = mock(WintertodtStateTracker.class);
         TrackerTestSupport.inject(plugin, "client", client);
+        TrackerTestSupport.inject(plugin, "configManager", mock(ConfigManager.class));
         TrackerTestSupport.inject(plugin, "tracker", tracker);
         TrackerTestSupport.inject(plugin, "arrow", mock(WintertodtHintArrow.class));
         TrackerTestSupport.inject(plugin, "paths", mock(WintertodtPathTracker.class));
@@ -95,7 +96,7 @@ public class WintertodtSoloIntegrationTest
         when(tracker.snapshot(any())).thenReturn(active.toBuilder().roundState(RoundState.COUNTDOWN)
             .wintertodtEnergy(-1).secondsToStart(0).build());
         plugin.onGameTick(new GameTick()); assertTrue(plugin.isSoloFinishRequested());
-        verifyNoInteractions(manager);
+        verify(manager, never()).setConfiguration("wintertodtautopilot", "finishSoloRound", false);
         when(tracker.snapshot(any())).thenReturn(active.toBuilder().roundState(RoundState.COMPLETE).wintertodtEnergy(0).build());
         plugin.onGameTick(new GameTick()); assertFalse(plugin.isSoloFinishRequested());
         verify(manager).setConfiguration("wintertodtautopilot", "finishSoloRound", false);
