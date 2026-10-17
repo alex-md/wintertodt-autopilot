@@ -29,14 +29,14 @@ final class WintertodtHighlight
     static boolean inventoryItem(WintertodtSnapshot s, WintertodtObjective o, int itemId)
     {
         if (o == null || s.getRoundState() == RoundState.OUTSIDE || WintertodtGuidance.performing(s, o)) { return false; }
-        if (o.getItemIds().contains(itemId)) { return true; }
-        // Fuel is an attention cue when maintenance blocks feeding, not a new instruction to feed an unlit brazier.
-        boolean blockedFuel = s.active() && (s.getLocalBrazierState() == BrazierState.UNLIT
-            || s.getLocalBrazierState() == BrazierState.BROKEN)
-            && (o.getType() == ObjectiveType.LIGHT || o.getType() == ObjectiveType.REPAIR
-                || o.getType() == ObjectiveType.HEAL_PYROMANCER);
-        return blockedFuel && (itemId == ItemID.WINT_BRUMA_ROOT && s.getBrumaRoots() > 0
-            || itemId == ItemID.WINT_BRUMA_KINDLING && s.getBrumaKindling() > 0);
+        return o.getItemIds().contains(itemId);
+    }
+
+    static Color inventoryColor(WintertodtObjective objective, int itemId)
+    {
+        // Keep the tool amber and give its fletching target a softer gold tone.
+        return objective.getType() == ObjectiveType.FLETCH && itemId == ItemID.WINT_BRUMA_ROOT
+            ? new Color(255, 215, 130) : WintertodtOverlay.color(objective);
     }
 
     static float strength(WintertodtSnapshot snapshot, WintertodtObjective objective, boolean enabled)

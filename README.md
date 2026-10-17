@@ -10,9 +10,9 @@ Instructions stay in one movable panel. The highlighted target shows where to cl
 
 You still do every click. The plugin doesn't play for you.
 
-## Latest update — 0.2.1
+## Latest update — 0.2.2
 
-Fletching knife support, independent warmth and round-start alerts, clearer reward milestones, and separate Mass/Solo settings. Everyone gets a short chatbox notice after logging in, once per RuneLite profile. The notice still appears if gameplay guidance is paused.
+Relighting highlights the brazier and lighting tool without pulsing roots or kindling. Fletching uses amber for the knife and softer gold for the roots. Walking paths allow collision-checked diagonals and prefer fewer bends between equally short routes.
 
 ## Get started
 
@@ -26,7 +26,7 @@ All options are in RuneLite settings → **Wintertodt Autopilot**. Mass and Solo
 ## What it does
 
 - Shows one action at a time, with the target or inventory items highlighted.
-- Gets the highlights out of the way while you're working. Interrupted actions bring them back, with pulsing fuel when the brazier goes out.
+- Gets the highlights out of the way while you're working. Interrupted actions bring the relevant cues back; an extinguished brazier pulses without highlighting fuel.
 - Keeps track of warmth and guides potion prep, repairs, relighting, and pyromancer healing.
 - Adjusts batches around your reward goal and the time left in the round.
 - Keeps earned points separate from fuel you still need to feed. Once you earn 500 points, the panel keeps **Reward secured** visible alongside your next target.

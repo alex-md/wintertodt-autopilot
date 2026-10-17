@@ -175,3 +175,11 @@ The observation pipeline supports Mass and experimental Solo. Collect initial So
 
 - [ ] With no 0.2.1 notice marker saved, log in anywhere: one short update message appears in the chatbox. It also appears when enabling the plugin while already logged in and when gameplay guidance is paused.
 - [ ] Wait several ticks, hop, log out/in and restart RuneLite: the message does not repeat in that RuneLite profile. A separate profile receives its own notice.
+
+
+## 0.2.2 highlights and routes
+
+- [ ] Relight with roots and kindling held: the brazier pulses, the lighting tool is highlighted, and fuel has no inventory cue.
+- [ ] Start fletching with either knife: the knife is amber and roots are softer gold; both cues settle while fletching.
+- [ ] Check diagonal routes across open ground and around blocked corners in all four arena corners, including Solo gap approaches.
+- [ ] Updating from 0.2.1 with its notice marker saved does not display another release notice.
