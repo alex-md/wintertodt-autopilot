@@ -160,3 +160,7 @@ Reinspected [GOTR Autopilot's InstructionOverlay](https://github.com/FabulousOtt
 ## Flame highlight palette — 13 October 2026
 
 Live feedback found the teal difficult to distinguish. Normal target, inventory, optional path/tile and panel accents now use flame orange-yellow (#FFB428); supply targets use a lighter gold (#FFD24B). This replaces the earlier teal palette. Emergency warmth remains red, with pale red text for readability. Existing dark edging and pulse behavior are retained.
+
+## Highlight controls and healing — 17 October 2026
+
+Scene and inventory borders now default to one pixel, with a shared 1–4 pixel setting in RuneLite's configuration panel. Attention pulses change opacity rather than border width. Inventory borders no longer use the broad glow; scene feathering is reduced to one pixel. Healing explicitly accepts only finished rejuvenation potions from the current objective. Regression checks cover every dose variant, stale feeding/fletching animations, Mass and Solo healing, and fuel accidentally included in a healing objective. Live interface-scale and gameplay checks remain pending.

@@ -6,6 +6,50 @@ import static org.junit.Assert.*;
 
 public class WintertodtHighlightTest
 {
+    @Test public void healingOnlyHighlightsFinishedPotionsEvenWithFuelInTheObjective()
+    {
+        int[] potions = {ItemID.WINT_POTION1, ItemID.WINT_POTION2, ItemID.WINT_POTION3, ItemID.WINT_POTION4};
+        for (int potion : potions)
+        {
+            WintertodtObjective heal = new WintertodtObjective(ObjectiveType.HEAL_PYROMANCER, "Heal", "local_pyromancer_down",
+                TargetKind.PYROMANCER, 1, false, potion, ItemID.WINT_BRUMA_ROOT, ItemID.WINT_BRUMA_KINDLING, ItemID.WINT_VIAL);
+            for (PlayerActivity activity : new PlayerActivity[]{PlayerActivity.IDLE, PlayerActivity.FEEDING, PlayerActivity.FLETCHING, PlayerActivity.HEALING})
+            {
+                WintertodtSnapshot s = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+                    .brumaRoots(5).brumaKindling(5).currentActivity(activity).build();
+                assertEquals(activity != PlayerActivity.HEALING, WintertodtHighlight.inventoryItem(s, heal, potion));
+                assertFalse(WintertodtHighlight.inventoryItem(s, heal, ItemID.WINT_BRUMA_ROOT));
+                assertFalse(WintertodtHighlight.inventoryItem(s, heal, ItemID.WINT_BRUMA_KINDLING));
+                assertFalse(WintertodtHighlight.inventoryItem(s, heal, ItemID.WINT_VIAL));
+            }
+        }
+    }
+
+    @Test public void inventoryBorderWidthStaysFixedWhilePulsingAndCanBeAdjusted()
+    {
+        assertEquals(1, new WintertodtAutopilotConfig() { }.highlightBorderWidth());
+        int thin = paintedBorderPixels(1, 1);
+        assertEquals(thin, paintedBorderPixels(1, .25f));
+        assertTrue(paintedBorderPixels(4, 1) > thin);
+        assertEquals(thin, paintedBorderPixels(0, 1));
+        assertEquals(paintedBorderPixels(4, 1), paintedBorderPixels(100, 1));
+    }
+
+    private int paintedBorderPixels(int width, float strength)
+    {
+        java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(80, 80, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D graphics = image.createGraphics();
+        WintertodtHighlight.inventory(graphics, new java.awt.Rectangle(20, 20, 40, 40), java.awt.Color.ORANGE, strength, width);
+        graphics.dispose();
+        int count = 0;
+        // Count pixels outside the item bounds, excluding the interior fill.
+        for (int y = 0; y < 20; y++)
+        {
+            if ((image.getRGB(40, y) >>> 24) != 0) { count++; }
+        }
+        return count;
+    }
+
     @Test public void interruptionCuePersistsUntilResumingAndExcludesMovementAndWaiting()
     {
         WintertodtSnapshot s = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).interrupted(true).build();

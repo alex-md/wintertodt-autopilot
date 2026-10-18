@@ -112,4 +112,9 @@ public interface WintertodtAutopilotConfig extends Config
     @ConfigItem(position = 14, keyName = "pulseInterruptions", name = "Pulse attention cues", description = "Pulse borders for stopped actions, repairs, relighting, low warmth and urgent feeding", section = guidance)
     default boolean pulseInterruptions() { return true; }
 
+    @ConfigItem(position = 15, keyName = "highlightBorderWidth", name = "Highlight border width",
+        description = "Border width in pixels for scene targets and inventory items. Attention pulses change opacity, not width.", section = guidance)
+    @Range(min = 1, max = 4)
+    default int highlightBorderWidth() { return 1; }
+
 }

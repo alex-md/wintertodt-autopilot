@@ -84,7 +84,7 @@ Do not mark these checks complete from unit tests. Solo energy stabilization rem
 ## Quiet while working, pulse when interrupted
 
 - [ ] Start chopping, feeding and fletching: the matching target outline, standing tile, path, owned hint arrow and inventory borders disappear once that activity is observed. The main overlay still acknowledges progress.
-- [ ] Interrupt feeding with fuel remaining: the fuel highlights pulse again. Extinguish or break the brazier: remaining roots/kindling pulse alongside the required relight/repair items and scene cue, even if the last feeding animation has not cleared.
+- [ ] Interrupt feeding with fuel remaining: the fuel highlights pulse again. Extinguish or break the brazier: highlight only the required maintenance item and scene target, even if the last feeding animation has not cleared. Roots and kindling have no cue during maintenance.
 - [ ] Begin the repair/relight: matching cues settle. Resume feeding: all fuel borders disappear again. Low warmth must still take priority over fuel attention.
 - [ ] Disable attention pulses: needed highlights remain steady. Disable inventory highlights: fuel attention is suppressed. Other plugins' hint arrows remain intact.
 - [ ] Move the camera near each viewport edge and test fixed/resizable layouts. Optional routes and tile strokes stay in the game viewport.
@@ -183,3 +183,9 @@ The observation pipeline supports Mass and experimental Solo. Collect initial So
 - [ ] Start fletching with either knife: the knife is amber and roots are softer gold; both cues settle while fletching.
 - [ ] Check diagonal routes across open ground and around blocked corners in all four arena corners, including Solo gap approaches.
 - [ ] Updating from 0.2.1 with its notice marker saved does not display another release notice.
+
+## 0.2.3 highlight controls and healing
+
+- [ ] Check scene targets and inventory borders at widths 1 through 4 in fixed, resizable and scaled interfaces. The default is 1 pixel; pulses change opacity without expanding the border.
+- [ ] Carry roots and kindling while a pyromancer needs healing in Mass and Solo. Only the selected finished rejuvenation potion is highlighted, including immediately after feeding stops and with each potion dose variant.
+- [ ] Begin healing: the potion border disappears. Resume feeding: fuel highlights return only when feeding needs to start again.

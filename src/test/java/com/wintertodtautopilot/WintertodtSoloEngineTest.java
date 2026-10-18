@@ -335,13 +335,18 @@ public class WintertodtSoloEngineTest
     @Test public void pointsHealsObservedDamageButXpWaitsForIncapacitation()
     {
         sustain();
-        WintertodtSnapshot damaged = health(snapshot().toBuilder().observationTick(++tick).build(), WorkingCorner.SOUTHWEST, 50);
+        WintertodtSnapshot damaged = health(snapshot().toBuilder().observationTick(++tick)
+            .brumaKindling(5).currentActivity(PlayerActivity.FEEDING).build(), WorkingCorner.SOUTHWEST, 50);
         WintertodtObjective o = engine.decide(damaged, settings);
         assertEquals("solo_points_heal", o.getReason());
         assertEquals(WorkingCorner.SOUTHWEST, o.getDestination());
+        assertTrue(WintertodtHighlight.inventoryItem(damaged, o, ItemID.WINT_POTION4));
+        assertFalse(WintertodtHighlight.inventoryItem(damaged, o, ItemID.WINT_BRUMA_KINDLING));
+        assertFalse(WintertodtHighlight.inventoryItem(damaged, o, ItemID.WINT_BRUMA_ROOT));
         PlannerSettings xp = new PlannerSettings(WintertodtStrategy.MASS_XP, PointGoal.MINIMUM_500,
             FletchMode.AUTOMATIC, 50, 20);
-        assertEquals(ObjectiveType.CHOP, engine.decide(damaged, xp).getType());
+        assertEquals(ObjectiveType.CHOP, engine.decide(damaged.toBuilder()
+            .brumaKindling(0).currentActivity(PlayerActivity.IDLE).build(), xp).getType());
         down = WorkingCorner.SOUTHWEST;
         assertEquals(ObjectiveType.HEAL_PYROMANCER, engine.decide(snapshot().toBuilder().observationTick(++tick).build(), xp).getType());
     }

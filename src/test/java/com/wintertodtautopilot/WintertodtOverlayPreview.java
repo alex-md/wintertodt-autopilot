@@ -68,12 +68,23 @@ public final class WintertodtOverlayPreview
             WintertodtHighlight.strengthAt(stopped, light, true, 300_000_000L));
         graphics.setColor(Color.WHITE); graphics.drawString("Tinderbox", 569, 710); graphics.drawString("Tinderbox", 664, 710);
         graphics.drawString("Roots (no cue)", 760, 710);
-        graphics.setColor(Color.LIGHT_GRAY); graphics.drawString("Fletching: amber knife / soft gold roots", 350, 765);
+        graphics.setColor(Color.LIGHT_GRAY); graphics.drawString("Fletching: knife / roots", 350, 765);
         WintertodtHighlight.inventory(graphics, new Rectangle(355, 785, 55, 40),
             WintertodtHighlight.inventoryColor(fletch, ItemID.KNIFE), 1);
         WintertodtHighlight.inventory(graphics, new Rectangle(440, 785, 55, 40),
             WintertodtHighlight.inventoryColor(fletch, ItemID.WINT_BRUMA_ROOT), 1);
         graphics.setColor(Color.WHITE); graphics.drawString("Knife", 360, 810); graphics.drawString("Roots", 445, 810);
+        graphics.drawString("Border width: 1 / 2 / 3 / 4 pixels", 560, 765);
+        for (int width = 1; width <= 4; width++)
+        {
+            WintertodtHighlight.inventory(graphics, new Rectangle(565 + (width - 1) * 80, 785, 55, 40),
+                WintertodtHighlight.inventoryColor(fletch, ItemID.KNIFE), 1, width);
+        }
+        WintertodtObjective heal = new WintertodtObjective(ObjectiveType.HEAL_PYROMANCER, "Heal", "local_pyromancer_down",
+            TargetKind.PYROMANCER, 1, false, ItemID.WINT_POTION2);
+        graphics.setColor(Color.WHITE); graphics.drawString("Heal: potion only", 920, 765);
+        WintertodtHighlight.inventory(graphics, new Rectangle(925, 785, 65, 40), WintertodtOverlay.color(heal), 1);
+        graphics.setColor(Color.WHITE); graphics.drawString("Potion", 930, 810); graphics.drawString("Kindling (no cue)", 1010, 810);
         graphics.setColor(Color.LIGHT_GRAY);
         graphics.drawString("Supply instructions appear in the main panel only - no floating scene labels", 20, 855);
         TargetKind[] supplies = {TargetKind.HAMMER_CRATE, TargetKind.POTION_CRATE, TargetKind.HERBS, TargetKind.BREWMA};

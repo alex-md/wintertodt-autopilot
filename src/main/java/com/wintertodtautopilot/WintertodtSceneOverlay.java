@@ -41,11 +41,10 @@ public class WintertodtSceneOverlay extends Overlay
         if (config.highlightTarget())
         {
             NPC npc = plugin.getTargetNpc(); TileObject object = plugin.getTargetObject();
-            int width = config.pulseInterruptions() && WintertodtHighlight.needsAttention(s, o)
-                ? Math.round(1 + 5 * strength) : WintertodtGuidance.isSupplyTarget(o) ? 4 : 2;
+            int width = Math.max(1, Math.min(4, config.highlightBorderWidth()));
             Color outline = WintertodtHighlight.alpha(color, (int) (255 * strength));
-            if (npc != null) { outlines.drawOutline(npc, width, outline, 3); }
-            else if (object != null) { outlines.drawOutline(object, width, outline, 3); }
+            if (npc != null) { outlines.drawOutline(npc, width, outline, 1); }
+            else if (object != null) { outlines.drawOutline(object, width, outline, 1); }
         }
         if (!config.showPath() && !config.highlightStandingTiles()) { return null; }
         // Isolate the clip: paths and floor markers must never paint over the UI.

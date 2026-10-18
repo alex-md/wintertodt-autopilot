@@ -24,6 +24,6 @@ public class WintertodtInventoryOverlay extends WidgetItemOverlay
         Rectangle bounds = item.getCanvasBounds();
         if (bounds == null) { return; }
         WintertodtHighlight.inventory(graphics, bounds, WintertodtHighlight.inventoryColor(o, itemId),
-            WintertodtHighlight.strength(s, o, config.pulseInterruptions()));
+            WintertodtHighlight.strength(s, o, config.pulseInterruptions()), config.highlightBorderWidth());
     }
 }

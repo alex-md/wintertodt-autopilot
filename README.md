@@ -10,9 +10,9 @@ Instructions stay in one movable panel. The highlighted target shows where to cl
 
 You still do every click. The plugin doesn't play for you.
 
-## Latest update — 0.2.2
+## Latest update — 0.2.3
 
-Relighting highlights the brazier and lighting tool without pulsing roots or kindling. Fletching uses amber for the knife and softer gold for the roots. Walking paths allow collision-checked diagonals and prefer fewer bends between equally short routes.
+Highlights use thin borders by default. Adjust **Highlight border width** (1–4 pixels) in the built-in settings. Attention pulses fade the border without making it thicker. Healing a pyromancer highlights only the rejuvenation potion, never roots or kindling.
 
 ## Get started
 

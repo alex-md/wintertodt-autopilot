@@ -29,6 +29,8 @@ final class WintertodtHighlight
     static boolean inventoryItem(WintertodtSnapshot s, WintertodtObjective o, int itemId)
     {
         if (o == null || s.getRoundState() == RoundState.OUTSIDE || WintertodtGuidance.performing(s, o)) { return false; }
+        // Healing uses a finished potion, never fuel carried for a later feeding step.
+        if (o.getType() == ObjectiveType.HEAL_PYROMANCER && WintertodtConstants.doses(itemId) == 0) { return false; }
         return o.getItemIds().contains(itemId);
     }
 
@@ -85,16 +87,19 @@ final class WintertodtHighlight
     }
     static void inventory(Graphics2D graphics, Rectangle bounds, Color color, float strength)
     {
+        inventory(graphics, bounds, color, strength, 1);
+    }
+    static void inventory(Graphics2D graphics, Rectangle bounds, Color color, float strength, int borderWidth)
+    {
         Graphics2D g = (Graphics2D) graphics.create();
         try
         {
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g.setColor(alpha(color, (int) (30 * strength))); g.fillRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, 7, 7);
-            g.setStroke(new BasicStroke(4)); g.setColor(new Color(0, 0, 0, 180));
+            float width = Math.max(1, Math.min(4, borderWidth));
+            g.setStroke(new BasicStroke(width + 1)); g.setColor(new Color(0, 0, 0, (int) (100 * strength)));
             g.drawRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, 7, 7);
-            softEdge(g, new java.awt.geom.RoundRectangle2D.Float(bounds.x, bounds.y, bounds.width, bounds.height, 7, 7),
-                color, 1 + 3 * strength, strength);
-            g.setStroke(new BasicStroke(1 + 3 * strength)); g.setColor(alpha(color, (int) (250 * strength)));
+            g.setStroke(new BasicStroke(width)); g.setColor(alpha(color, (int) (250 * strength)));
             g.drawRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, 7, 7);
         }
         finally { g.dispose(); }

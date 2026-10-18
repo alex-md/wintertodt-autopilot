@@ -76,8 +76,14 @@ public class WintertodtDecisionEngineTest
     }
     @Test public void downPyromancerBeforeRelight()
     {
-        assertEquals(ObjectiveType.HEAL_PYROMANCER, decide(active().localBrazierState(BrazierState.UNLIT)
-            .localPyromancerIncapacitated(true).rejuvenationDoses(2).potionItem(ItemID.WINT_POTION2)).getType());
+        WintertodtSnapshot s = active().localBrazierState(BrazierState.UNLIT)
+            .localPyromancerIncapacitated(true).rejuvenationDoses(2).potionItem(ItemID.WINT_POTION2)
+            .brumaRoots(3).brumaKindling(5).currentActivity(PlayerActivity.FEEDING).build();
+        WintertodtObjective heal = engine.decide(s, settings);
+        assertEquals(ObjectiveType.HEAL_PYROMANCER, heal.getType());
+        assertTrue(WintertodtHighlight.inventoryItem(s, heal, ItemID.WINT_POTION2));
+        assertFalse(WintertodtHighlight.inventoryItem(s, heal, ItemID.WINT_BRUMA_KINDLING));
+        assertFalse(WintertodtHighlight.inventoryItem(s, heal, ItemID.WINT_BRUMA_ROOT));
     }
     @Test public void potionPreparationGuidesEachSubstep()
     {
