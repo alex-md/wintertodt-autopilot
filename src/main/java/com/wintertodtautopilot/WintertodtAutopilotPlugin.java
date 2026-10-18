@@ -19,12 +19,16 @@ import net.runelite.client.events.ConfigChanged;
 @PluginDescriptor(name = "Wintertodt Autopilot",
     description = "Shows your next Wintertodt action, highlights what you need, and helps plan warmth and points. You do the clicking.",
     tags = {"wintertodt", "wt", "firemaking", "fm", "woodcutting", "fletching", "skilling", "minigame",
-        "helper", "guide", "brazier", "bruma", "warmth", "points", "rewards", "mass"})
+        "helper", "guide", "brazier", "bruma", "warmth", "points", "rewards", "mass", "solo"})
 @Slf4j
 public class WintertodtAutopilotPlugin extends Plugin
 {
+    static final String UPDATE_NOTICE_VERSION = "0.2.1";
+    static final String UPDATE_NOTICE_KEY = "lastUpdateNotice";
+    static final String UPDATE_NOTICE = "Wintertodt Autopilot 0.2.1: fletching knife support, better alerts, reward milestone feedback, and separate Mass/Solo settings.";
     @Inject private Client client;
     @Inject private ClientThread clientThread;
+    @Inject private ConfigManager configManager;
     @Inject private WintertodtAutopilotConfig config;
     @Inject private WintertodtStateTracker tracker;
     @Inject private WintertodtObjectTracker objects;
@@ -38,6 +42,10 @@ public class WintertodtAutopilotPlugin extends Plugin
     @Inject private Notifier notifier;
     public boolean isPaused() { return config.pauseGuidance(); }
     private final WintertodtDecisionEngine engine = new WintertodtDecisionEngine();
+    private final WintertodtSoloEngine solo = new WintertodtSoloEngine();
+    public SoloPhase getSoloPhase() { return solo.getPhase(); }
+    public String getSoloEnergyTrend() { return solo.getEnergyTrend(); }
+    public boolean isSoloFinishRequested() { return solo.isFinishRequested(); }
     private final WintertodtAttentionTracker attention = new WintertodtAttentionTracker();
     @Getter private WintertodtSnapshot snapshot = WintertodtSnapshot.builder().build();
     @Getter private WintertodtObjective objective;
@@ -67,7 +75,7 @@ public class WintertodtAutopilotPlugin extends Plugin
     }
     private void reset()
     {
-        arrow.clear(); paths.reset(); potionTargetDoses = 0; tracker.reset(); objects.reset(); npcs.reset(); engine.reset(); attention.reset();
+        arrow.clear(); paths.reset(); potionTargetDoses = 0; tracker.reset(); objects.reset(); npcs.reset(); engine.reset(); solo.reset(); attention.reset();
         snapshot = WintertodtSnapshot.builder().build(); objective = null;
         targetObject = null; targetNpc = null; targetPoint = null; bootstrapNeeded = true;
     }
@@ -77,16 +85,33 @@ public class WintertodtAutopilotPlugin extends Plugin
         switch (event.getGameState())
         {
             case LOADING:
+            case CONNECTION_LOST:
+                boolean finishIntent = solo.isFinishRequested();
+                reset();
+                if (finishIntent) { solo.configure(config.soloPointGoal(), true); }
+                break;
             case HOPPING:
             case LOGIN_SCREEN:
-            case CONNECTION_LOST: reset(); break;
+                reset();
+                if (config.finishSoloRound())
+                { configManager.setConfiguration("wintertodtautopilot", "finishSoloRound", false); }
+                break;
             default: break;
         }
+    }
+    private void showUpdateNotice()
+    {
+        // Run anywhere after login, including for players who have paused gameplay guidance.
+        if (UPDATE_NOTICE_VERSION.equals(configManager.getConfiguration("wintertodtautopilot", UPDATE_NOTICE_KEY)))
+        { return; }
+        client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", UPDATE_NOTICE, null);
+        configManager.setConfiguration("wintertodtautopilot", UPDATE_NOTICE_KEY, UPDATE_NOTICE_VERSION);
     }
     @Subscribe
     public void onGameTick(GameTick event)
     {
         if (client.getGameState() != GameState.LOGGED_IN) { return; }
+        showUpdateNotice();
         Player player = client.getLocalPlayer();
         boolean inRegion = player != null && player.getWorldLocation().getRegionID() == WintertodtConstants.REGION;
         if (!inRegion)
@@ -100,16 +125,26 @@ public class WintertodtAutopilotPlugin extends Plugin
             for (NPC npc : client.getTopLevelWorldView().npcs()) { npcs.add(npc); }
             bootstrapNeeded = false;
         }
+        boolean soloMode = config.mode() == WintertodtMode.SOLO;
         WintertodtSnapshot next = tracker.snapshot(config.workingCorner());
         if (snapshot.active() != next.active()) { engine.reset(); }
-        WintertodtObjective chosen = engine.decide(next, PlannerSettings.from(config));
+        boolean verifiedBoundary = next.getRoundState() == RoundState.COMPLETE
+            || next.getRoundState() == RoundState.COUNTDOWN && next.getSecondsToStart() > 0
+            || next.active() && snapshot.getRoundState() == RoundState.COUNTDOWN && snapshot.getSecondsToStart() > 0;
+        if (soloMode && verifiedBoundary && config.finishSoloRound())
+        { configManager.setConfiguration("wintertodtautopilot", "finishSoloRound", false); }
+        solo.configure(config.soloPointGoal(), soloMode && !verifiedBoundary && next.active() && config.finishSoloRound());
+        WintertodtPlanner planner = soloMode ? solo : engine;
+        WintertodtObjective chosen = planner.decide(next, PlannerSettings.from(config));
         if (config.debug() && (objective == null || objective.getType() != chosen.getType()
             || !objective.getReason().equals(chosen.getReason())))
         {
             log.debug("{} -> {} reason={}", objective == null ? "NONE" : objective.getType(), chosen.getType(), chosen.getReason());
         }
+        if (config.debug()) { log.debug("{}", WintertodtObservationTrace.format(next, chosen, config.mode(), soloMode ? solo.getPhase() : null,
+            solo.getEnergyTrend(), solo.getTransitionReason(), solo.isFinishRequested())); }
         snapshot = next; objective = chosen;
-        potionTargetDoses = engine.getPreparationDoseTarget();
+        potionTargetDoses = planner.getPreparationDoseTarget();
         if (isPaused())
         {
             clearGuidance();
@@ -139,7 +174,15 @@ public class WintertodtAutopilotPlugin extends Plugin
                     if (isPaused()) { clearGuidance(); }
                     else { engine.reset(); }
                 }
-                else if ("strategy".equals(event.getKey()) || "pointGoal".equals(event.getKey())
+                else if ("mode".equals(event.getKey()))
+                {
+                    engine.reset(); solo.reset(); clearGuidance();
+                    if (config.finishSoloRound())
+                    { configManager.setConfiguration("wintertodtautopilot", "finishSoloRound", false); }
+                }
+                else if ("soloPointGoal".equals(event.getKey()) || "finishSoloRound".equals(event.getKey()))
+                { clearGuidance(); }
+                else if ("soloStrategy".equals(event.getKey()) || "strategy".equals(event.getKey()) || "pointGoal".equals(event.getKey())
                     || "fletchMode".equals(event.getKey()) || "workingCorner".equals(event.getKey()))
                 {
                     engine.reset();
@@ -155,21 +198,25 @@ public class WintertodtAutopilotPlugin extends Plugin
     {
         targetObject = null; targetNpc = null; targetPoint = null;
         TargetKind target = objective.getTarget();
+        WorkingCorner destination = objective.getDestination() == WorkingCorner.AUTOMATIC
+            ? snapshot.getWorkingCorner() : objective.getDestination();
         if (target == TargetKind.NONE) { return; }
         if (target == TargetKind.PYROMANCER || target == TargetKind.BREWMA)
         {
             targetNpc = npcs.target(target, target == TargetKind.PYROMANCER
-                ? snapshot.getWorkingCorner().location() : snapshot.getPlayerLocation());
+                ? destination.location() : snapshot.getPlayerLocation());
             if (targetNpc != null) { targetPoint = targetNpc.getWorldLocation(); }
         }
         else
         {
-            targetObject = objects.target(target, snapshot.getPlayerLocation());
+            targetObject = objective.getDestination() == WorkingCorner.AUTOMATIC
+                ? objects.target(target, snapshot.getPlayerLocation())
+                : objects.target(target, snapshot.getPlayerLocation(), destination);
             if (targetObject != null) { targetPoint = targetObject.getWorldLocation(); }
         }
         if (targetPoint == null && (target == TargetKind.BRAZIER || target == TargetKind.PYROMANCER))
         {
-            targetPoint = snapshot.getWorkingCorner().location();
+            targetPoint = destination.location();
         }
     }
     @Subscribe public void onAnimationChanged(AnimationChanged e) { tracker.animation(e.getActor()); }

@@ -59,7 +59,11 @@ public class WintertodtStateTrackerTest
     }
     @Test public void warmthUsesTenthsAndIdleHasFiveTickGrace()
     {
-        assertEquals(78, tick(10).getWarmth());
+        WintertodtSnapshot first = tick(10);
+        assertEquals(78, first.getWarmth());
+        assertEquals(10, first.getObservationTick());
+        assertEquals(4, first.getCorners().size());
+        assertEquals(-1, first.observedGlobalLitBraziers());
         assertFalse(tick(14).isPlayerIdle()); assertTrue(tick(15).isPlayerIdle());
     }
     @Test public void preparationAreaInsidePrisonIsNotAnOutsideLobby()
@@ -115,7 +119,10 @@ public class WintertodtStateTrackerTest
         round = RoundState.COMPLETE;
         assertFalse(tick(11).isInterrupted());
         when(player.getWorldLocation()).thenReturn(new WorldPoint(3200, 3200, 0));
-        assertEquals(RoundState.OUTSIDE, tick(12).getRoundState());
+        WintertodtSnapshot outside = tick(12);
+        assertEquals(RoundState.OUTSIDE, outside.getRoundState());
+        assertTrue(outside.getCorners().isEmpty());
+        assertEquals(-1, outside.getObservationTick());
         verify(inventory).reset();
     }
 
@@ -158,6 +165,14 @@ public class WintertodtStateTrackerTest
         assertEquals(ObjectiveType.RESTORE_WARMTH, o.getType());
         assertEquals("Drink rejuvenation potion", o.getInstruction());
         assertTrue(WintertodtHighlight.needsAttention(s, o));
+    }
+
+    @Test public void runEnergyUsesHundredthsAndInvalidSignalIsUnknown()
+    {
+        when(client.getEnergy()).thenReturn(1734);
+        assertEquals(17, tick(10).getRunEnergyPercent());
+        when(client.getEnergy()).thenReturn(10001);
+        assertEquals(-1, tick(11).getRunEnergyPercent());
     }
 
 }

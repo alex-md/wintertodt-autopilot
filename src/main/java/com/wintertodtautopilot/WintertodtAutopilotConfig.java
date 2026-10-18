@@ -5,28 +5,49 @@ import net.runelite.client.config.*;
 @ConfigGroup("wintertodtautopilot")
 public interface WintertodtAutopilotConfig extends Config
 {
-    @ConfigSection(name = "Your plan", description = "Start with Balanced and Automatic. Supplies and batch sizes adapt as you play.", position = 0)
+    @ConfigSection(name = "Your plan", description = "Choose your mode and shared preferences.", position = 0)
     String plan = "plan";
-    @ConfigSection(name = "Warmth", description = "Optional recovery thresholds. The defaults suit mass worlds.", position = 1, closedByDefault = true)
+    @ConfigSection(name = "Mass settings", description = "Strategy and reward goal for mass worlds. Used only in Mass mode.", position = 1)
+    String mass = "mass";
+    @ConfigSection(name = "Solo settings (experimental)", description = "Strategy, point goal and finishing controls. Used only in Solo mode.", position = 2, closedByDefault = true)
+    String solo = "solo";
+    @ConfigSection(name = "Warmth", description = "Optional recovery thresholds. The defaults suit mass worlds.", position = 3, closedByDefault = true)
     String warmth = "warmth";
-    @ConfigSection(name = "On-screen guidance", description = "Choose how much help appears in the game", position = 2)
+    @ConfigSection(name = "On-screen guidance", description = "Choose how much help appears in the game", position = 4)
     String guidance = "guidance";
-    @ConfigSection(name = "Notifications", description = "Attention alerts", position = 3, closedByDefault = true)
+    @ConfigSection(name = "Notifications", description = "Attention alerts", position = 5, closedByDefault = true)
     String notifications = "notifications";
-    @ConfigSection(name = "Advanced", description = "Diagnostics for live validation", position = 4, closedByDefault = true)
+    @ConfigSection(name = "Advanced", description = "Diagnostics for live validation", position = 6, closedByDefault = true)
     String advanced = "advanced";
 
     @ConfigItem(position = -1, keyName = "pauseGuidance", name = "Pause guidance",
         description = "Pause all guidance and notifications, including warmth warnings. Uncheck to resume. This choice is saved.", section = plan)
     default boolean pauseGuidance() { return false; }
 
-    @ConfigItem(position = 0, keyName = "strategy", name = "Strategy", description = "Balanced: all-round play. Firemaking XP: feed roots. Points / Rewards: more kindling. Low Attention: fewer task changes.", section = plan)
+    @ConfigItem(position = -2, keyName = "mode", name = "Mode",
+        description = "Mass or experimental Solo guidance. Solo assumes you chose an empty world; it cannot guarantee exclusive control.", section = plan)
+    default WintertodtMode mode() { return WintertodtMode.MASS; }
+
+    @ConfigItem(position = 0, keyName = "soloStrategy", name = "Solo strategy",
+        description = "Points / Rewards fletches roots. Firemaking XP feeds roots. Fletch roots can override either choice.", section = solo)
+    default SoloStrategy soloStrategy() { return SoloStrategy.POINTS; }
+
+    @ConfigItem(position = 1, keyName = "soloPointGoal", name = "Solo point goal",
+        description = "Solo finishes when this many points are earned. Carried fuel must be fed first. This is a score target, not a reward-cap estimate.", section = solo)
+    @Range(min = 500, max = 100000)
+    default int soloPointGoal() { return 5000; }
+
+    @ConfigItem(position = 2, keyName = "finishSoloRound", name = "Finish this Solo round",
+        description = "Finish the current Solo round early. Once requested, it stays active until the round ends, you change mode or hop worlds.", section = solo)
+    default boolean finishSoloRound() { return false; }
+
+    @ConfigItem(position = 0, keyName = "strategy", name = "Strategy", description = "Mass strategy. Balanced: all-round play. Firemaking XP: feed roots. Points / Rewards: more kindling. Low Attention: fewer task changes.", section = mass)
     default WintertodtStrategy strategy() { return WintertodtStrategy.MASS_BALANCED; }
 
-    @ConfigItem(position = 1, keyName = "workingCorner", name = "Working brazier", description = "Leave Automatic selected to follow your established corner. Choose a brazier only to stay at a specific corner.", section = plan)
+    @ConfigItem(position = 1, keyName = "workingCorner", name = "Working brazier", description = "Automatic follows your nearby working corner in Mass and Solo, with a margin to prevent switching back and forth. Choose a brazier only to stay at a specific corner.", section = plan)
     default WorkingCorner workingCorner() { return WorkingCorner.AUTOMATIC; }
 
-    @ConfigItem(position = 2, keyName = "pointGoal", name = "Reward goal", description = "500 points secures a reward. Guidance continues toward the next threshold after reaching your goal; carried fuel must be fed to count.", section = plan)
+    @ConfigItem(position = 2, keyName = "pointGoal", name = "Reward goal", description = "500 points secures a reward. Guidance continues toward the next threshold after reaching your goal; carried fuel must be fed to count.", section = mass)
     default PointGoal pointGoal() { return PointGoal.MINIMUM_500; }
 
     @ConfigItem(position = 3, keyName = "fletchMode", name = "Fletch roots", description = "Leave Automatic selected to let your strategy decide. Always and Never override it; urgent feeding can still take priority.", section = plan)
@@ -53,7 +74,7 @@ public interface WintertodtAutopilotConfig extends Config
     @ConfigItem(position = 11, keyName = "showHintArrow", name = "Show hint arrow", description = "Show an arrow when another plugin or the game has no active arrow", section = guidance)
     default boolean showHintArrow() { return true; }
 
-    @ConfigItem(position = 12, keyName = "showPath", name = "Show walking path", description = "Draw a route through loaded walkable tiles to the current target", section = guidance)
+    @ConfigItem(position = 12, keyName = "showPath", name = "Show walking path", description = "Draw a route to the current target. Solo can use the northern gap at 60 Agility; you click each jump yourself.", section = guidance)
     default boolean showPath() { return false; }
 
     @ConfigItem(position = 7, keyName = "showOverlay", name = "Show main overlay", description = "Movable next-action panel", section = guidance)
@@ -65,7 +86,7 @@ public interface WintertodtAutopilotConfig extends Config
     @ConfigItem(position = 20, keyName = "notifyIdle", name = "Notify on idle", description = "Notify once per attention episode after the inactivity delay", section = notifications)
     default boolean notifyIdle() { return false; }
 
-    @ConfigItem(position = 21, keyName = "notifyLowWarmth", name = "Notify low warmth", description = "Notify on emergency warmth with a cooldown", section = notifications)
+    @ConfigItem(position = 21, keyName = "notifyLowWarmth", name = "Notify low warmth", description = "Notify once per emergency warmth episode, with its own 30-second cooldown. Other alerts never delay this warning.", section = notifications)
     default boolean notifyLowWarmth() { return true; }
 
     @ConfigItem(position = 22, keyName = "notifyRoundStart", name = "Notify round start", description = "Notify when a round starts in five seconds", section = notifications)
@@ -74,11 +95,15 @@ public interface WintertodtAutopilotConfig extends Config
     @ConfigItem(position = 23, keyName = "notifyStateChange", name = "Notify important changes", description = "Notify about broken braziers and downed pyromancers after inactivity", section = notifications)
     default boolean notifyStateChange() { return false; }
 
+    @ConfigItem(position = 25, keyName = "notifyRewardSecured", name = "Notify reward secured",
+        description = "Notify once when earned points reach 500 this round. Carried fuel does not count. Pausing guidance pauses this alert too.", section = notifications)
+    default boolean notifyRewardSecured() { return false; }
+
     @ConfigItem(position = 24, keyName = "inactivitySeconds", name = "Attention delay", description = "Seconds without meaningful action before attention notifications", section = notifications)
     @Range(min = 1, max = 60)
     default int inactivitySeconds() { return 6; }
 
-    @ConfigItem(position = 30, keyName = "debug", name = "Debug overlay and logs", description = "Show observed state and log reasons when objectives change", section = advanced)
+    @ConfigItem(position = 30, keyName = "debug", name = "Debug overlay and logs", description = "Show observed state, log objective changes and per-tick corner observation traces", section = advanced)
     default boolean debug() { return false; }
 
     @ConfigItem(position = 13, keyName = "highlightStandingTiles", name = "Highlight standing tiles", description = "Optional floor marker for the destination; off by default.", section = guidance)

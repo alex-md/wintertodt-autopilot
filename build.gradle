@@ -1,12 +1,12 @@
 plugins { id 'java' }
 group = 'com.wintertodtautopilot'
-version = '0.1.1'
+version = '0.2.2'
 repositories {
     mavenLocal()
     maven { url = 'https://repo.runelite.net'; content { includeGroupByRegex('net\\.runelite.*') } }
     mavenCentral()
 }
-def runeLiteVersion = '1.13.1'
+def runeLiteVersion = '1.13.2'
 dependencies {
     compileOnly "net.runelite:client:${runeLiteVersion}"
     compileOnly 'org.projectlombok:lombok:1.18.42'

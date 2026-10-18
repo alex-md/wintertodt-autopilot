@@ -98,4 +98,31 @@ public class WintertodtTargetTrackerTest
         assertEquals(-1, tracker.brazierDistance(player));
     }
 
+    @Test public void cornerObservationResolvesRemoteBraziersWithoutChangingWorkingTarget() throws Exception
+    {
+        Client client = mock(Client.class);
+        WintertodtObjectTracker tracker = new WintertodtObjectTracker();
+        TrackerTestSupport.inject(tracker, "client", client);
+        for (WorkingCorner corner : WorkingCorner.values())
+        {
+            if (corner == WorkingCorner.AUTOMATIC) { continue; }
+            GameObject object = mock(GameObject.class);
+            int id = corner == WorkingCorner.NORTHEAST ? ObjectID.WINT_BRAZIER_LIT : ObjectID.WINT_BRAZIER;
+            when(object.getId()).thenReturn(id);
+            when(object.getWorldLocation()).thenReturn(corner.location());
+            ObjectComposition definition = mock(ObjectComposition.class);
+            when(client.getObjectDefinition(id)).thenReturn(definition);
+            when(definition.getId()).thenReturn(id);
+            tracker.add(object);
+        }
+        tracker.select(WorkingCorner.SOUTHWEST.location(), WorkingCorner.SOUTHWEST, null);
+        assertEquals(BrazierState.LIT, tracker.brazierAt(WorkingCorner.NORTHEAST));
+        assertEquals(BrazierState.UNLIT, tracker.brazierAt(WorkingCorner.SOUTHWEST));
+        assertEquals(WorkingCorner.SOUTHWEST.location(), tracker.target(TargetKind.BRAZIER,
+            WorkingCorner.NORTHEAST.location()).getWorldLocation());
+        assertEquals(BrazierState.UNKNOWN, tracker.brazierAt(WorkingCorner.AUTOMATIC));
+        tracker.reset();
+        assertEquals(BrazierState.UNKNOWN, tracker.brazierAt(WorkingCorner.NORTHEAST));
+    }
+
 }

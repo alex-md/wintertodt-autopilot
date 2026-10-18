@@ -14,7 +14,7 @@ public final class WintertodtOverlayPreview
 {
     public static void main(String[] args) throws Exception
     {
-        BufferedImage image = new BufferedImage(1220, 1120, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage image = new BufferedImage(1220, 2000, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = image.createGraphics();
         graphics.setColor(new Color(34, 38, 41)); graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
         graphics.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13)); graphics.setColor(Color.LIGHT_GRAY);
@@ -38,11 +38,17 @@ public final class WintertodtOverlayPreview
         graphics.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13)); graphics.setColor(Color.LIGHT_GRAY);
         graphics.drawString("Optional walking cues (off by default) and inventory highlight samples", 20, 630);
         Color color = WintertodtOverlay.color(fletch);
-        net.runelite.api.Point a = new net.runelite.api.Point(60, 710), b = new net.runelite.api.Point(210, 710),
-            c = new net.runelite.api.Point(210, 775);
-        WintertodtHighlight.routeEdge(graphics, a, b, color, 1);
-        WintertodtHighlight.routeEdge(graphics, b, c, color, 1);
-        Polygon tile = new Polygon(new int[]{160, 210, 260, 210}, new int[]{775, 750, 775, 800}, 4);
+        // Draw the real local pathfinder's output rather than a hand-built right-angle route.
+        java.util.List<net.runelite.api.Point> route = WintertodtPathfinder.find(new int[8][6],
+            new net.runelite.api.Point(0, 0), 6, 3, 6, 3, false);
+        net.runelite.api.Point previous = null;
+        for (net.runelite.api.Point step : route)
+        {
+            net.runelite.api.Point next = new net.runelite.api.Point(50 + step.getX() * 38, 790 - step.getY() * 30);
+            if (previous != null) { WintertodtHighlight.routeEdge(graphics, previous, next, color, 1); }
+            previous = next;
+        }
+        Polygon tile = new Polygon(new int[]{253, 278, 303, 278}, new int[]{700, 685, 700, 715}, 4);
         WintertodtHighlight.tile(graphics, tile, color, 1, true);
         WintertodtSnapshot feeding = base.toBuilder().currentActivity(PlayerActivity.FEEDING).build();
         WintertodtObjective feed = new WintertodtObjective(ObjectiveType.FEED, "Feed", "batch_feed",
@@ -51,18 +57,23 @@ public final class WintertodtOverlayPreview
         if (WintertodtHighlight.inventoryItem(feeding, feed, ItemID.WINT_BRUMA_ROOT))
         { WintertodtHighlight.inventory(graphics, new Rectangle(350, 685, 45, 40), color, 1); }
         graphics.setColor(Color.WHITE); graphics.drawString("Roots", 355, 710);
-        graphics.drawString("Brazier out: fuel pulses (dim / bright)", 560, 665);
+        graphics.drawString("Brazier out: only tinderbox pulses (dim / bright)", 560, 665);
         WintertodtSnapshot stopped = feeding.toBuilder().localBrazierState(BrazierState.UNLIT).build();
         WintertodtObjective light = new WintertodtObjective(ObjectiveType.LIGHT, "Relight", "brazier_unlit",
             TargetKind.BRAZIER, 0, false, ItemID.TINDERBOX);
-        if (WintertodtHighlight.inventoryItem(stopped, light, ItemID.WINT_BRUMA_ROOT))
-        {
-            WintertodtHighlight.inventory(graphics, new Rectangle(565, 685, 45, 40), color,
-                WintertodtHighlight.strengthAt(stopped, light, true, 900_000_000L));
-            WintertodtHighlight.inventory(graphics, new Rectangle(640, 685, 45, 40), color,
-                WintertodtHighlight.strengthAt(stopped, light, true, 300_000_000L));
-        }
-        graphics.setColor(Color.WHITE); graphics.drawString("Roots", 569, 710); graphics.drawString("Roots", 644, 710);
+        Color lightColor = WintertodtHighlight.inventoryColor(light, ItemID.TINDERBOX);
+        WintertodtHighlight.inventory(graphics, new Rectangle(565, 685, 65, 40), lightColor,
+            WintertodtHighlight.strengthAt(stopped, light, true, 900_000_000L));
+        WintertodtHighlight.inventory(graphics, new Rectangle(660, 685, 65, 40), lightColor,
+            WintertodtHighlight.strengthAt(stopped, light, true, 300_000_000L));
+        graphics.setColor(Color.WHITE); graphics.drawString("Tinderbox", 569, 710); graphics.drawString("Tinderbox", 664, 710);
+        graphics.drawString("Roots (no cue)", 760, 710);
+        graphics.setColor(Color.LIGHT_GRAY); graphics.drawString("Fletching: amber knife / soft gold roots", 350, 765);
+        WintertodtHighlight.inventory(graphics, new Rectangle(355, 785, 55, 40),
+            WintertodtHighlight.inventoryColor(fletch, ItemID.KNIFE), 1);
+        WintertodtHighlight.inventory(graphics, new Rectangle(440, 785, 55, 40),
+            WintertodtHighlight.inventoryColor(fletch, ItemID.WINT_BRUMA_ROOT), 1);
+        graphics.setColor(Color.WHITE); graphics.drawString("Knife", 360, 810); graphics.drawString("Roots", 445, 810);
         graphics.setColor(Color.LIGHT_GRAY);
         graphics.drawString("Supply instructions appear in the main panel only - no floating scene labels", 20, 855);
         TargetKind[] supplies = {TargetKind.HAMMER_CRATE, TargetKind.POTION_CRATE, TargetKind.HERBS, TargetKind.BREWMA};
@@ -75,6 +86,30 @@ public final class WintertodtOverlayPreview
                 .currentActivity(PlayerActivity.IDLE).points(0).brumaRoots(0).secondsToStart(45).build(), supply,
                 new WintertodtAutopilotConfig() { });
         }
+        graphics.setColor(Color.LIGHT_GRAY);
+        graphics.drawString("Solo: sustain / deliberate recovery / finish request / missing observations", 20, 1150);
+        String[] instructions = {"Fletch 17 roots", "Let energy recover to 12% - do not relight",
+            "Light the Northeast brazier to finish", "Check all brazier indicators before relighting"};
+        String[] reasons = {"solo_batch_fletch", "solo_recovery_wait", "solo_light", "solo_coverage_unknown"};
+        for (int i = 0; i < 4; i++)
+        {
+            final int index = i;
+            render(graphics, 20 + i * 300, 1170, base.toBuilder().wintertodtEnergy(i == 0 ? 26 : 9)
+                .currentActivity(PlayerActivity.IDLE).build(), new WintertodtObjective(i == 0 ? ObjectiveType.FLETCH : i == 2 ? ObjectiveType.LIGHT : ObjectiveType.WAIT,
+                    instructions[i], reasons[i], i == 2 ? TargetKind.BRAZIER : TargetKind.NONE, 0, false),
+                new WintertodtAutopilotConfig() {
+                    @Override public WintertodtMode mode() { return WintertodtMode.SOLO; }
+                    @Override public boolean finishSoloRound() { return index == 2; }
+                });
+        }
+        graphics.setColor(Color.LIGHT_GRAY);
+        graphics.drawString("Reward secured stays visible as the target advances (Normal / Minimal / Solo)", 20, 1560);
+        render(graphics, 20, 1580, base.toBuilder().points(500).build(), fletch,
+            new WintertodtAutopilotConfig() { });
+        render(graphics, 320, 1580, base.toBuilder().points(1000).build(), fletch,
+            new WintertodtAutopilotConfig() { @Override public OverlayDetail overlayDetail() { return OverlayDetail.MINIMAL; } });
+        render(graphics, 620, 1580, base.toBuilder().points(500).build(), fletch,
+            new WintertodtAutopilotConfig() { @Override public WintertodtMode mode() { return WintertodtMode.SOLO; } });
         graphics.dispose();
         Path path = Path.of("build", "preview", "overlays.png"); Files.createDirectories(path.getParent());
         ImageIO.write(image, "png", path.toFile());
@@ -83,7 +118,12 @@ public final class WintertodtOverlayPreview
         WintertodtObjective objective, WintertodtAutopilotConfig config)
     {
         WintertodtAutopilotPlugin plugin = mock(WintertodtAutopilotPlugin.class);
-        when(plugin.getPotionTargetDoses()).thenReturn(4);
+        when(plugin.getPotionTargetDoses()).thenReturn(config.mode() == WintertodtMode.SOLO ? config.finishSoloRound() ? 8 : 24 : 4);
+        when(plugin.getSoloPhase()).thenReturn(config.finishSoloRound() ? SoloPhase.FINISH
+            : objective.getReason().contains("recovery") ? SoloPhase.RECOVER_ENERGY
+            : objective.getReason().contains("unknown") ? SoloPhase.REASSESS : SoloPhase.SUSTAIN);
+        when(plugin.getSoloEnergyTrend()).thenReturn("STABLE");
+        when(plugin.isSoloFinishRequested()).thenReturn(config.finishSoloRound());
         when(plugin.isPaused()).thenReturn(config.pauseGuidance());
         when(plugin.getSnapshot()).thenReturn(snapshot); when(plugin.getObjective()).thenReturn(objective);
         WintertodtOverlay overlay = new WintertodtOverlay(plugin, config);

@@ -23,7 +23,7 @@ public class WintertodtInventoryOverlay extends WidgetItemOverlay
         if (plugin.isPaused() || !config.highlightInventory() || !WintertodtHighlight.inventoryItem(s, o, itemId)) { return; }
         Rectangle bounds = item.getCanvasBounds();
         if (bounds == null) { return; }
-        WintertodtHighlight.inventory(graphics, bounds, WintertodtOverlay.color(o),
+        WintertodtHighlight.inventory(graphics, bounds, WintertodtHighlight.inventoryColor(o, itemId),
             WintertodtHighlight.strength(s, o, config.pulseInterruptions()));
     }
 }

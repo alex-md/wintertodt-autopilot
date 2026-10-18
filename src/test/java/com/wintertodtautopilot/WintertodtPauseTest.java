@@ -24,6 +24,7 @@ public class WintertodtPauseTest
         WintertodtPathTracker paths = mock(WintertodtPathTracker.class);
         Notifier notifier = mock(Notifier.class);
         TrackerTestSupport.inject(plugin, "client", client);
+        TrackerTestSupport.inject(plugin, "configManager", mock(net.runelite.client.config.ConfigManager.class));
         TrackerTestSupport.inject(plugin, "clientThread", thread);
         TrackerTestSupport.inject(plugin, "tracker", tracker);
         TrackerTestSupport.inject(plugin, "arrow", arrow);

@@ -50,7 +50,7 @@ public class WintertodtHighlightTest
     }
 
 
-    @Test public void fuelSettlesWhileFeedingAndPulsesWhenMaintenanceBlocksIt()
+    @Test public void relightingHighlightsOnlyTheToolWhileTheBrazierPulses()
     {
         WintertodtSnapshot feeding = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
             .localBrazierState(BrazierState.LIT).brumaRoots(5).brumaKindling(4)
@@ -62,8 +62,8 @@ public class WintertodtHighlightTest
         WintertodtObjective light = new WintertodtObjective(ObjectiveType.LIGHT, "Relight", "brazier_unlit",
             TargetKind.BRAZIER, 0, false, ItemID.TINDERBOX);
         // A changed objective must wake the cue even before a stale feeding animation clears.
-        assertTrue(WintertodtHighlight.inventoryItem(stopped, light, ItemID.WINT_BRUMA_ROOT));
-        assertTrue(WintertodtHighlight.inventoryItem(stopped, light, ItemID.WINT_BRUMA_KINDLING));
+        assertFalse(WintertodtHighlight.inventoryItem(stopped, light, ItemID.WINT_BRUMA_ROOT));
+        assertFalse(WintertodtHighlight.inventoryItem(stopped, light, ItemID.WINT_BRUMA_KINDLING));
         assertTrue(WintertodtHighlight.inventoryItem(stopped, light, ItemID.TINDERBOX));
         assertFalse(WintertodtHighlight.inventoryItem(stopped, light, ItemID.KNIFE));
         assertEquals(.25f, WintertodtHighlight.strengthAt(stopped, light, true, 900_000_000L), .001f);
@@ -75,7 +75,7 @@ public class WintertodtHighlightTest
             .interrupted(true).build(), feed, ItemID.WINT_BRUMA_KINDLING));
     }
 
-    @Test public void fuelAttentionDoesNotDistractFromWarmthOrEmptyInventory()
+    @Test public void maintenanceAndWarmthHighlightOnlyTheirRelevantItems()
     {
         WintertodtSnapshot stopped = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
             .localBrazierState(BrazierState.BROKEN).brumaRoots(5).build();
@@ -85,7 +85,31 @@ public class WintertodtHighlightTest
         assertTrue(WintertodtHighlight.inventoryItem(stopped, drink, ItemID.WINT_POTION4));
         WintertodtObjective repair = new WintertodtObjective(ObjectiveType.REPAIR, "Repair", "brazier_broken",
             TargetKind.BRAZIER, 0, true, ItemID.HAMMER);
-        assertTrue(WintertodtHighlight.inventoryItem(stopped, repair, ItemID.WINT_BRUMA_ROOT));
+        assertFalse(WintertodtHighlight.inventoryItem(stopped, repair, ItemID.WINT_BRUMA_ROOT));
+        assertTrue(WintertodtHighlight.inventoryItem(stopped, repair, ItemID.HAMMER));
         assertFalse(WintertodtHighlight.inventoryItem(stopped.toBuilder().brumaRoots(0).build(), repair, ItemID.WINT_BRUMA_ROOT));
     }
+
+    @Test public void fletchingDistinguishesRootsFromEitherKnifeAndSettlesWhenStarted()
+    {
+        WintertodtSnapshot idle = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+            .brumaRoots(5).currentActivity(PlayerActivity.IDLE).build();
+        WintertodtObjective fletch = new WintertodtObjective(ObjectiveType.FLETCH, "Fletch roots", "batch_fletch",
+            TargetKind.NONE, 5, false, ItemID.KNIFE, ItemID.FLETCHING_KNIFE, ItemID.WINT_BRUMA_ROOT);
+        assertNotEquals(WintertodtHighlight.inventoryColor(fletch, ItemID.KNIFE),
+            WintertodtHighlight.inventoryColor(fletch, ItemID.WINT_BRUMA_ROOT));
+        assertEquals(WintertodtOverlay.color(fletch), WintertodtHighlight.inventoryColor(fletch, ItemID.KNIFE));
+        assertEquals(WintertodtHighlight.inventoryColor(fletch, ItemID.KNIFE),
+            WintertodtHighlight.inventoryColor(fletch, ItemID.FLETCHING_KNIFE));
+        for (int itemId : fletch.getItemIds())
+        {
+            assertTrue(WintertodtHighlight.inventoryItem(idle, fletch, itemId));
+            assertFalse(WintertodtHighlight.inventoryItem(idle.toBuilder()
+                .currentActivity(PlayerActivity.FLETCHING).build(), fletch, itemId));
+        }
+        WintertodtObjective feed = new WintertodtObjective(ObjectiveType.FEED, "Feed", "batch_feed",
+            TargetKind.BRAZIER, 5, false, ItemID.WINT_BRUMA_ROOT);
+        assertEquals(WintertodtOverlay.color(feed), WintertodtHighlight.inventoryColor(feed, ItemID.WINT_BRUMA_ROOT));
+    }
+
 }
