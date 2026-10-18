@@ -189,3 +189,12 @@ The observation pipeline supports Mass and experimental Solo. Collect initial So
 - [ ] Check scene targets and inventory borders at widths 1 through 4 in fixed, resizable and scaled interfaces. The default is 1 pixel; pulses change opacity without expanding the border.
 - [ ] Carry roots and kindling while a pyromancer needs healing in Mass and Solo. Only the selected finished rejuvenation potion is highlighted, including immediately after feeding stops and with each potion dose variant.
 - [ ] Begin healing: the potion border disappears. Resume feeding: fuel highlights return only when feeding needs to start again.
+
+
+## 0.2.4 Solo batches
+
+- [ ] During energy recovery, fletch a partial batch, then collect six more roots with kindling still held. Keep chopping all six before fletching them together; a full kindling bag waits for recovery or feeds an observed lit brazier.
+- [ ] Recover to 12% while partway through chopping. After any repair/relight, resume the remaining batch rather than switching to fletching after one root. Repeat with existing kindling and with Never fletch / Firemaking XP.
+- [ ] With only a remote brazier lit, repeat a partial fletch followed by gathering, including when the remote brazier is only known from the HUD. No alternating one-root loop.
+- [ ] Observe an injured remote pyromancer during recovery chopping. Optional healing waits for processing; warmth restoration still takes priority and resumes the batch afterward.
+- [ ] Near the Solo goal, collect only the remaining useful roots and fletch them together. Check a six-root Mass batch too; late-round deadline guidance must still take priority.

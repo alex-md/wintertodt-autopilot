@@ -221,10 +221,11 @@ public final class WintertodtSoloEngine implements WintertodtPlanner
     private WintertodtObjective unlitWork(WintertodtSnapshot s, PlannerSettings settings, boolean recovery)
     {
         boolean fletching = settings.fletch(s);
+        if (batch == ObjectiveType.FLETCH && (s.getBrumaRoots() == 0 || !fletching)) { batch = null; }
         int carried = fletching ? s.potentialPointsIfFletched() : s.inventoryPoints();
         int remainingPoints = Math.max(0, pointGoal - s.getPoints() - carried);
         boolean processRoots = s.getBrumaRoots() > 0 && fletching
-            && (s.getFreeSlots() == 0 || s.getBrumaKindling() > 0 || remainingPoints == 0
+            && (s.getFreeSlots() == 0 || (s.getBrumaKindling() > 0 && batch != ObjectiveType.CHOP) || remainingPoints == 0
                 || batch == ObjectiveType.FLETCH || s.getCurrentActivity() == PlayerActivity.FLETCHING);
         if (processRoots)
         {
@@ -235,7 +236,11 @@ public final class WintertodtSoloEngine implements WintertodtPlanner
         {
             batch = ObjectiveType.CHOP;
             int unit = fletching ? 25 : 10;
-            return chop(s, Math.min(s.getFreeSlots(), (remainingPoints + unit - 1) / unit),
+            int count = Math.min(s.getFreeSlots(), (remainingPoints + unit - 1) / unit);
+            // Recovery and remote-brazier work share the sustain batch. Carry its
+            // total target across the relight so it cannot collapse to one root.
+            batchTarget = fuel(s) + count;
+            return chop(s, count,
                 recovery ? "solo_recovery_chop" : "solo_remote_lit");
         }
         return waitFor(recovery ? "Let energy recover to 12% - do not relight" : "Remote brazier is lit - leave home unlit",
@@ -247,7 +252,7 @@ public final class WintertodtSoloEngine implements WintertodtPlanner
         if (recovery) { return unlitWork(s, settings, true); }
         if (batch == ObjectiveType.FEED && fuel(s) == 0) { batch = null; }
         if (batch == ObjectiveType.FLETCH && (s.getBrumaRoots() == 0 || !settings.fletch(s))) { batch = ObjectiveType.FEED; }
-        if (batch == ObjectiveType.CHOP && (fuel(s) >= batchTarget || s.getFreeSlots() == 0 || s.getBrumaKindling() > 0))
+        if (batch == ObjectiveType.CHOP && (fuel(s) >= batchTarget || s.getFreeSlots() == 0))
         { batch = settings.fletch(s) && s.getBrumaRoots() > 0 ? ObjectiveType.FLETCH : ObjectiveType.FEED; }
         if (batch == null)
         {
@@ -311,7 +316,8 @@ public final class WintertodtSoloEngine implements WintertodtPlanner
     private WintertodtObjective pointsHealing(WintertodtSnapshot s, PlannerSettings settings, boolean recovery)
     {
         if (settings.getStrategy() == WintertodtStrategy.MASS_XP || s.getRejuvenationDoses() <= 1) { return null; }
-        boolean roaming = s.getBrumaRoots() > 0 && (recovery || batch == ObjectiveType.FLETCH
+        // Optional remote healing fits the processing stage, not each newly chopped root.
+        boolean roaming = s.getBrumaRoots() > 0 && (batch == ObjectiveType.FLETCH
             || s.getCurrentActivity() == PlayerActivity.FLETCHING || s.getFreeSlots() == 0);
         WorkingCorner target = WorkingCorner.AUTOMATIC;
         int distance = Integer.MAX_VALUE;

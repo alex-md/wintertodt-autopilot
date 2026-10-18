@@ -1,6 +1,6 @@
 plugins { id 'java' }
 group = 'com.wintertodtautopilot'
-version = '0.2.3'
+version = '0.2.4'
 repositories {
     mavenLocal()
     maven { url = 'https://repo.runelite.net'; content { includeGroupByRegex('net\\.runelite.*') } }

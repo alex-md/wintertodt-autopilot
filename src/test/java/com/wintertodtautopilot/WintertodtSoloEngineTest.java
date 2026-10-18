@@ -454,4 +454,128 @@ public class WintertodtSoloEngineTest
         assertEquals(ObjectiveType.FLETCH, next().getType());
     }
 
+    @Test public void recoveryStartsAnotherWholeBatchAfterPartialFletching()
+    {
+        energy = 9; roots = 1; free = 6;
+        assertEquals(ObjectiveType.FLETCH, engine.decide(snapshot().toBuilder().observationTick(++tick)
+            .currentActivity(PlayerActivity.FLETCHING).build(), settings).getType());
+        roots = 0; kindling = 1;
+        assertEquals(6, next().getQuantity());
+        for (int count = 1; count < 6; count++)
+        {
+            roots = count; free = 6 - count;
+            WintertodtObjective chop = next();
+            assertEquals(ObjectiveType.CHOP, chop.getType());
+            assertEquals(6 - count, chop.getQuantity());
+        }
+        roots = 6; free = 0;
+        assertEquals(ObjectiveType.FLETCH, next().getType());
+        for (int count = 5; count > 0; count--)
+        {
+            roots = count; kindling = 7 - count;
+            assertEquals(ObjectiveType.FLETCH, next().getType());
+        }
+        roots = 0; kindling = 7;
+        assertEquals(ObjectiveType.WAIT, next().getType());
+        energy = 12; next(); next();
+        assertEquals(ObjectiveType.LIGHT, next().getType());
+        states.put(WorkingCorner.SOUTHWEST, BrazierState.LIT);
+        assertEquals(ObjectiveType.FEED, next().getType());
+    }
+
+    @Test public void remoteBrazierWorkDoesNotAlternateAfterMakingOneKindling()
+    {
+        energy = 28; remoteHud = true; states.put(WorkingCorner.NORTHEAST, BrazierState.LIT); roots = 1; free = 6;
+        assertEquals(ObjectiveType.FLETCH, engine.decide(snapshot().toBuilder().observationTick(++tick)
+            .currentActivity(PlayerActivity.FLETCHING).build(), settings).getType());
+        roots = 0; kindling = 1;
+        assertEquals(ObjectiveType.CHOP, next().getType());
+        // The remote brazier is known from the HUD but cannot yet be targeted.
+        roots = 1; free = 5;
+        assertEquals(ObjectiveType.CHOP, next().getType());
+        roots = 2; free = 4;
+        assertEquals(ObjectiveType.CHOP, next().getType());
+    }
+
+    @Test public void recoveryBatchTargetSurvivesReturnToSustain()
+    {
+        energy = 9; free = 6;
+        assertEquals(6, next().getQuantity());
+        roots = 1; free = 5; energy = 12; next(); next();
+        assertEquals(ObjectiveType.LIGHT, next().getType());
+        states.put(WorkingCorner.SOUTHWEST, BrazierState.LIT);
+        WintertodtObjective chop = next();
+        assertEquals(ObjectiveType.CHOP, chop.getType());
+        assertEquals(5, chop.getQuantity());
+        roots = 2; free = 4;
+        assertEquals(ObjectiveType.CHOP, next().getType());
+    }
+
+    @Test public void kindlingDoesNotCancelChoppingWhenRecoveryEnds()
+    {
+        energy = 9; roots = 1; free = 6;
+        engine.decide(snapshot().toBuilder().observationTick(++tick)
+            .currentActivity(PlayerActivity.FLETCHING).build(), settings);
+        roots = 0; kindling = 1; next();
+        energy = 12; next(); next();
+        assertEquals(ObjectiveType.LIGHT, next().getType());
+        states.put(WorkingCorner.SOUTHWEST, BrazierState.LIT);
+        roots = 1; free = 5;
+        WintertodtObjective chop = next();
+        assertEquals(ObjectiveType.CHOP, chop.getType());
+        assertEquals(5, chop.getQuantity());
+    }
+
+    @Test public void recoveryStopsGatheringAtTheSoloGoalAndFletchesTheWholeBatch()
+    {
+        engine.configure(500, false); energy = 9; points = 350; free = 20;
+        assertEquals(6, next().getQuantity());
+        for (int count = 1; count < 6; count++)
+        {
+            roots = count; free = 20 - count;
+            assertEquals(ObjectiveType.CHOP, next().getType());
+        }
+        roots = 6; free = 14;
+        assertEquals(ObjectiveType.FLETCH, next().getType());
+        roots = 5; kindling = 1;
+        assertEquals(ObjectiveType.FLETCH, next().getType());
+    }
+
+    @Test public void optionalRemoteHealingWaitsForTheRecoveryChoppingBatch()
+    {
+        energy = 9; free = 6;
+        assertEquals(ObjectiveType.CHOP, next().getType());
+        roots = 1; free = 5;
+        WintertodtSnapshot damaged = health(snapshot().toBuilder().observationTick(++tick)
+            .currentActivity(PlayerActivity.CHOPPING).build(), WorkingCorner.NORTHEAST, 50);
+        assertEquals(ObjectiveType.CHOP, engine.decide(damaged, settings).getType());
+        damaged = damaged.toBuilder().observationTick(++tick).brumaRoots(6).freeSlots(0).build();
+        assertEquals("solo_points_heal", engine.decide(damaged, settings).getReason());
+    }
+
+    @Test public void recoveryXpCollectsRootsWithoutFletchingAndResumesTheSameBatch()
+    {
+        settings = new PlannerSettings(WintertodtStrategy.MASS_XP, PointGoal.MINIMUM_500,
+            FletchMode.NEVER, 50, 20);
+        energy = 9; free = 6;
+        assertEquals(6, next().getQuantity());
+        roots = 1; free = 5; energy = 12; next(); next();
+        assertEquals(ObjectiveType.LIGHT, next().getType());
+        states.put(WorkingCorner.SOUTHWEST, BrazierState.LIT);
+        assertEquals(ObjectiveType.CHOP, next().getType());
+        roots = 6; free = 0;
+        assertEquals(ObjectiveType.FEED, next().getType());
+    }
+
+    @Test public void warmthInterruptionsPreserveTheRecoveryChoppingBatch()
+    {
+        energy = 9; free = 6; next();
+        roots = 2; free = 4;
+        assertEquals(ObjectiveType.RESTORE_WARMTH, engine.decide(snapshot().toBuilder().observationTick(++tick)
+            .warmth(15).build(), settings).getType());
+        WintertodtObjective chop = next();
+        assertEquals(ObjectiveType.CHOP, chop.getType());
+        assertEquals(4, chop.getQuantity());
+    }
+
 }

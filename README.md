@@ -10,7 +10,9 @@ Instructions stay in one movable panel. The highlighted target shows where to cl
 
 You still do every click. The plugin doesn't play for you.
 
-## Latest update — 0.2.3
+## Latest update — 0.2.4
+
+Solo keeps chopping and fletching in batches, including while energy recovers and after relighting. Leftover kindling no longer causes one-root chopping and fletching loops. Optional remote healing waits until the chopping batch is done.
 
 Highlights use thin borders by default. Adjust **Highlight border width** (1–4 pixels) in the built-in settings. Attention pulses fade the border without making it thicker. Healing a pyromancer highlights only the rejuvenation potion, never roots or kindling.
 

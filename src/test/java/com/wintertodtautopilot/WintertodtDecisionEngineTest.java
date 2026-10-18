@@ -462,4 +462,23 @@ public class WintertodtDecisionEngineTest
         }
     }
 
+    @Test public void sixRootMassBatchChopsThenFletchesThenFeedsWithoutAlternating()
+    {
+        assertEquals(6, decide(active().points(350)).getQuantity());
+        for (int roots = 1; roots < 6; roots++)
+        {
+            WintertodtObjective chop = decide(active().points(350).brumaRoots(roots).freeSlots(24 - roots));
+            assertEquals(ObjectiveType.CHOP, chop.getType());
+            assertEquals(6 - roots, chop.getQuantity());
+        }
+        for (int roots = 6; roots > 0; roots--)
+        {
+            WintertodtObjective fletch = decide(active().points(350).brumaRoots(roots)
+                .brumaKindling(6 - roots).freeSlots(18));
+            assertEquals(ObjectiveType.FLETCH, fletch.getType());
+            assertEquals(roots, fletch.getQuantity());
+        }
+        assertEquals(ObjectiveType.FEED, decide(active().points(350).brumaKindling(6).freeSlots(18)).getType());
+    }
+
 }
