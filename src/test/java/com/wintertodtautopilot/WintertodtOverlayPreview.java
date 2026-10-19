@@ -82,9 +82,10 @@ public final class WintertodtOverlayPreview
         }
         WintertodtObjective heal = new WintertodtObjective(ObjectiveType.HEAL_PYROMANCER, "Heal", "local_pyromancer_down",
             TargetKind.PYROMANCER, 1, false, ItemID.WINT_POTION2);
-        graphics.setColor(Color.WHITE); graphics.drawString("Heal: potion only", 920, 765);
-        WintertodtHighlight.inventory(graphics, new Rectangle(925, 785, 65, 40), WintertodtOverlay.color(heal), 1);
-        graphics.setColor(Color.WHITE); graphics.drawString("Potion", 930, 810); graphics.drawString("Kindling (no cue)", 1010, 810);
+        graphics.setColor(Color.WHITE); graphics.drawString("Heal: pyromancer only", 920, 765);
+        if (WintertodtHighlight.inventoryItem(stopped, heal, ItemID.WINT_POTION2))
+        { WintertodtHighlight.inventory(graphics, new Rectangle(925, 785, 65, 40), WintertodtOverlay.color(heal), 1); }
+        graphics.setColor(Color.WHITE); graphics.drawString("Potion (no cue)", 925, 810); graphics.drawString("Kindling (no cue)", 1040, 810);
         graphics.setColor(Color.LIGHT_GRAY);
         graphics.drawString("Supply instructions appear in the main panel only - no floating scene labels", 20, 855);
         TargetKind[] supplies = {TargetKind.HAMMER_CRATE, TargetKind.POTION_CRATE, TargetKind.HERBS, TargetKind.BREWMA};

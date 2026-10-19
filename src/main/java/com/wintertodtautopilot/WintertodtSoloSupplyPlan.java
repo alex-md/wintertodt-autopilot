@@ -23,8 +23,23 @@ final class WintertodtSoloSupplyPlan
         }
         int reserve = phase == SoloPhase.FINISH ? 8 : 24;
         int restockAt = phase != SoloPhase.FINISH && settings.getStrategy() != WintertodtStrategy.MASS_XP ? 8 : 4;
-        if (!restocking && s.getRejuvenationDoses() < restockAt) { restocking = true; target = reserve; }
-        if (target == 0) { target = reserve; }
+        boolean carryingFuel = s.getBrumaRoots() + s.getBrumaKindling() > 0;
+        boolean finishFuelFirst = s.active() && carryingFuel && s.getRejuvenationDoses() > 1;
+        if (target == 0)
+        {
+            target = reserve;
+            // Enabling mid-round with usable supplies must not force an opening
+            // top-up merely because the reserve is below six full bottles.
+            if (s.active() && (s.getRejuvenationDoses() >= restockAt || finishFuelFirst))
+            { restocking = false; }
+        }
+        if (!restocking && s.getRejuvenationDoses() < restockAt)
+        {
+            // Defer a new trip until the fuel batch is fed. Once ingredients are
+            // requested, complete that trip; the last personal dose cannot wait.
+            if (finishFuelFirst) { return null; }
+            restocking = true; target = reserve;
+        }
         if (phase == SoloPhase.FINISH) { target = Math.min(target, reserve); }
         if (s.getRejuvenationDoses() >= target) { restocking = false; }
         if (!restocking) { return null; }

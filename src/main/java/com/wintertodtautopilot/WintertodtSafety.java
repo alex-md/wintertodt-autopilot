@@ -7,7 +7,7 @@ final class WintertodtSafety
     static WintertodtObjective objective(WintertodtSnapshot s, PlannerSettings settings)
     {
         if (s.getRoundState() == RoundState.OUTSIDE || s.getRoundState() == RoundState.LOBBY
-            || s.getWarmth() < 0 || s.getWarmth() > settings.getRestoreWarmth()
+            || s.getWarmth() < 0 || s.getWarmth() >= 100 || s.getWarmth() > settings.getRestoreWarmth()
             || s.getCurrentActivity() == PlayerActivity.RESTORING_WARMTH) { return null; }
         boolean emergency = s.getWarmth() <= settings.getEmergencyWarmth();
         if (s.getWarmthItem() >= 0)

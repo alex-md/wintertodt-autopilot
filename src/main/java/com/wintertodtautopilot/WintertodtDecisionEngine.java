@@ -94,7 +94,10 @@ public final class WintertodtDecisionEngine implements WintertodtPlanner
             return action(ObjectiveType.WAIT, "Round ending - rewards secured", "ending_secured", TargetKind.NONE);
         }
         // Cold does not stop chopping. Keep the resource batch ahead of distant maintenance.
-        if (s.getCurrentActivity() == PlayerActivity.CHOPPING && !ending
+        if ((s.getCurrentActivity() == PlayerActivity.CHOPPING
+            || normal == ObjectiveType.CHOP && s.getBrumaRoots() > 0
+                && s.getBrumaRoots() + s.getBrumaKindling() < batchTarget && s.getFreeSlots() > 0
+                && s.getCurrentActivity() != PlayerActivity.FEEDING && s.getCurrentActivity() != PlayerActivity.FLETCHING) && !ending
             && !finishing && (!timed || additionalRoots(s, settings, goal) > 0))
         {
             return normal(s, settings, goal);

@@ -81,7 +81,7 @@ public class WintertodtDecisionEngineTest
             .brumaRoots(3).brumaKindling(5).currentActivity(PlayerActivity.FEEDING).build();
         WintertodtObjective heal = engine.decide(s, settings);
         assertEquals(ObjectiveType.HEAL_PYROMANCER, heal.getType());
-        assertTrue(WintertodtHighlight.inventoryItem(s, heal, ItemID.WINT_POTION2));
+        assertFalse(WintertodtHighlight.inventoryItem(s, heal, ItemID.WINT_POTION2));
         assertFalse(WintertodtHighlight.inventoryItem(s, heal, ItemID.WINT_BRUMA_KINDLING));
         assertFalse(WintertodtHighlight.inventoryItem(s, heal, ItemID.WINT_BRUMA_ROOT));
     }
@@ -479,6 +479,34 @@ public class WintertodtDecisionEngineTest
             assertEquals(roots, fletch.getQuantity());
         }
         assertEquals(ObjectiveType.FEED, decide(active().points(350).brumaKindling(6).freeSlots(18)).getType());
+    }
+
+    @Test public void animationGapsDoNotSendAnUnfinishedChoppingBatchBackForMaintenance()
+    {
+        assertEquals(ObjectiveType.CHOP, decide(active().freeSlots(6)).getType());
+        for (int count = 1; count < 6; count++)
+        {
+            assertEquals(ObjectiveType.CHOP, decide(active().brumaRoots(count).freeSlots(6 - count)
+                .currentActivity(PlayerActivity.IDLE).localBrazierState(BrazierState.UNLIT)).getType());
+        }
+        assertEquals(ObjectiveType.LIGHT, decide(active().brumaRoots(6).freeSlots(0)
+            .localBrazierState(BrazierState.UNLIT)).getType());
+    }
+
+    @Test public void massHealingUsesEveryFinishedPotionVariantAndNeverIngredientsOrFuel()
+    {
+        for (int potion : new int[]{ItemID.WINT_POTION1, ItemID.WINT_POTION2, ItemID.WINT_POTION3, ItemID.WINT_POTION4})
+        {
+            WintertodtSnapshot s = active().localBrazierState(BrazierState.UNLIT)
+                .localPyromancerIncapacitated(true).potionItem(potion)
+                .brumaRoots(5).brumaKindling(5).build();
+            WintertodtObjective heal = new WintertodtDecisionEngine().decide(s, settings);
+            assertEquals(ObjectiveType.HEAL_PYROMANCER, heal.getType());
+            assertEquals(java.util.Collections.singleton(potion), heal.getItemIds());
+            assertFalse(WintertodtHighlight.inventoryItem(s, heal, potion));
+            for (int irrelevant : new int[]{ItemID.WINT_BRUMA_ROOT, ItemID.WINT_BRUMA_KINDLING, ItemID.WINT_VIAL, ItemID.WINT_HERB})
+            { assertFalse(WintertodtHighlight.inventoryItem(s, heal, irrelevant)); }
+        }
     }
 
 }

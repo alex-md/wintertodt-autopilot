@@ -340,7 +340,7 @@ public class WintertodtSoloEngineTest
         WintertodtObjective o = engine.decide(damaged, settings);
         assertEquals("solo_points_heal", o.getReason());
         assertEquals(WorkingCorner.SOUTHWEST, o.getDestination());
-        assertTrue(WintertodtHighlight.inventoryItem(damaged, o, ItemID.WINT_POTION4));
+        assertFalse(WintertodtHighlight.inventoryItem(damaged, o, ItemID.WINT_POTION4));
         assertFalse(WintertodtHighlight.inventoryItem(damaged, o, ItemID.WINT_BRUMA_KINDLING));
         assertFalse(WintertodtHighlight.inventoryItem(damaged, o, ItemID.WINT_BRUMA_ROOT));
         PlannerSettings xp = new PlannerSettings(WintertodtStrategy.MASS_XP, PointGoal.MINIMUM_500,
@@ -502,8 +502,7 @@ public class WintertodtSoloEngineTest
         energy = 9; free = 6;
         assertEquals(6, next().getQuantity());
         roots = 1; free = 5; energy = 12; next(); next();
-        assertEquals(ObjectiveType.LIGHT, next().getType());
-        states.put(WorkingCorner.SOUTHWEST, BrazierState.LIT);
+        assertEquals(ObjectiveType.CHOP, next().getType()); // Finish gathering before relighting.
         WintertodtObjective chop = next();
         assertEquals(ObjectiveType.CHOP, chop.getType());
         assertEquals(5, chop.getQuantity());
@@ -560,10 +559,11 @@ public class WintertodtSoloEngineTest
         energy = 9; free = 6;
         assertEquals(6, next().getQuantity());
         roots = 1; free = 5; energy = 12; next(); next();
-        assertEquals(ObjectiveType.LIGHT, next().getType());
-        states.put(WorkingCorner.SOUTHWEST, BrazierState.LIT);
+        assertEquals(ObjectiveType.CHOP, next().getType()); // Finish gathering before relighting.
         assertEquals(ObjectiveType.CHOP, next().getType());
         roots = 6; free = 0;
+        assertEquals(ObjectiveType.LIGHT, next().getType());
+        states.put(WorkingCorner.SOUTHWEST, BrazierState.LIT);
         assertEquals(ObjectiveType.FEED, next().getType());
     }
 
@@ -576,6 +576,120 @@ public class WintertodtSoloEngineTest
         WintertodtObjective chop = next();
         assertEquals(ObjectiveType.CHOP, chop.getType());
         assertEquals(4, chop.getQuantity());
+    }
+
+    @Test public void extinguishedHomeDoesNotPullEachNewRootAwayFromTheBatch()
+    {
+        energy = 28; free = 6;
+        assertEquals(ObjectiveType.LIGHT, next().getType());
+        states.put(WorkingCorner.SOUTHWEST, BrazierState.LIT);
+        assertEquals(6, next().getQuantity());
+        for (int count = 1; count < 6; count++)
+        {
+            roots = count; free = 6 - count;
+            states.put(WorkingCorner.SOUTHWEST, count % 2 == 0 ? BrazierState.BROKEN : BrazierState.UNLIT);
+            WintertodtObjective chop = next(); // Idle animation gaps must also retain the batch.
+            assertEquals(ObjectiveType.CHOP, chop.getType());
+            assertEquals(6 - count, chop.getQuantity());
+        }
+        roots = 6; free = 0;
+        assertEquals(ObjectiveType.LIGHT, next().getType());
+        states.put(WorkingCorner.SOUTHWEST, BrazierState.LIT);
+        assertEquals(ObjectiveType.FLETCH, next().getType());
+        roots = 0; kindling = 6;
+        assertEquals(ObjectiveType.FEED, next().getType());
+    }
+
+    @Test public void localOptionalHealingDoesNotInterruptEachChoppedRoot()
+    {
+        energy = 28; free = 6; states.put(WorkingCorner.SOUTHWEST, BrazierState.LIT);
+        next();
+        for (int count = 1; count < 6; count++)
+        {
+            roots = count; free = 6 - count;
+            WintertodtSnapshot damaged = health(snapshot().toBuilder().observationTick(++tick).build(), WorkingCorner.SOUTHWEST, 50);
+            assertEquals(ObjectiveType.CHOP, engine.decide(damaged, settings).getType());
+        }
+        roots = 6; free = 0;
+        assertEquals(ObjectiveType.HEAL_PYROMANCER, engine.decide(
+            health(snapshot().toBuilder().observationTick(++tick).build(), WorkingCorner.SOUTHWEST, 50), settings).getType());
+    }
+
+    @Test public void remoteLitBrazierDoesNotTurnXpGatheringIntoOneRootTrips()
+    {
+        settings = new PlannerSettings(WintertodtStrategy.MASS_XP, PointGoal.MINIMUM_500, FletchMode.NEVER, 50, 20);
+        energy = 28; free = 6; states.put(WorkingCorner.NORTHEAST, BrazierState.LIT);
+        next();
+        for (int count = 1; count < 6; count++)
+        {
+            roots = count; free = 6 - count;
+            assertEquals(ObjectiveType.CHOP, next().getType());
+        }
+        roots = 6; free = 0;
+        assertEquals(ObjectiveType.FEED, next().getType());
+        roots = 5; free = 1;
+        assertEquals(ObjectiveType.FEED, next().getType());
+    }
+
+    @Test public void rapidDrainPreservesGatheringUntilEnergyBecomesCritical()
+    {
+        energy = 28; free = 6; states.put(WorkingCorner.SOUTHWEST, BrazierState.LIT);
+        next();
+        roots = 1; free = 5; energy = 24;
+        assertEquals(ObjectiveType.CHOP, next().getType());
+        roots = 2; free = 4; energy = 20;
+        assertEquals(ObjectiveType.CHOP, next().getType());
+        energy = 9;
+        assertEquals("solo_rapid_drain", next().getReason());
+        roots = 1; free = 5; tick += 7;
+        assertEquals(ObjectiveType.FEED, next().getType()); // Complete the urgent cash-out even after trend expires.
+    }
+
+    @Test public void stableRecoveryWithALitBrazierKeepsTheXpGatheringBatch()
+    {
+        settings = new PlannerSettings(WintertodtStrategy.MASS_XP, PointGoal.MINIMUM_500, FletchMode.NEVER, 50, 20);
+        energy = 9; free = 6; states.put(WorkingCorner.SOUTHWEST, BrazierState.LIT);
+        next();
+        roots = 1; free = 5;
+        assertEquals(ObjectiveType.CHOP, next().getType());
+        roots = 6; free = 0;
+        assertEquals(ObjectiveType.FEED, next().getType());
+    }
+
+    @Test public void drinkingBelowReserveFinishesFuelBeforeStartingOneRestockTrip()
+    {
+        energy = 28; free = 6; states.put(WorkingCorner.SOUTHWEST, BrazierState.LIT);
+        next();
+        roots = 2; free = 4; doses = 7;
+        assertEquals(ObjectiveType.CHOP, next().getType());
+        roots = 6; free = 0;
+        assertEquals(ObjectiveType.FLETCH, next().getType());
+        roots = 0; kindling = 6;
+        assertEquals(ObjectiveType.FEED, next().getType());
+        kindling = 1; free = 5;
+        assertEquals(ObjectiveType.FEED, next().getType());
+        kindling = 0; free = 6;
+        assertEquals(ObjectiveType.MAKE_REJUVENATION, next().getType());
+        doses = 24;
+        assertEquals(ObjectiveType.CHOP, next().getType());
+        doses = 23; roots = 1; free = 5;
+        assertEquals(ObjectiveType.CHOP, next().getType());
+    }
+
+    @Test public void soloHealingUsesEveryFinishedPotionVariantAndNeverFuel()
+    {
+        int[] potions = {ItemID.WINT_POTION1, ItemID.WINT_POTION2, ItemID.WINT_POTION3, ItemID.WINT_POTION4};
+        energy = 28; roots = 6; kindling = 5; free = 0; down = WorkingCorner.SOUTHWEST;
+        for (int potion : potions)
+        {
+            WintertodtSnapshot s = snapshot().toBuilder().observationTick(++tick).potionItem(potion).build();
+            WintertodtObjective heal = new WintertodtSoloEngine().decide(s, settings);
+            assertEquals(ObjectiveType.HEAL_PYROMANCER, heal.getType());
+            assertEquals(java.util.Collections.singleton(potion), heal.getItemIds());
+            assertFalse(WintertodtHighlight.inventoryItem(s, heal, potion));
+            for (int irrelevant : new int[]{ItemID.WINT_BRUMA_ROOT, ItemID.WINT_BRUMA_KINDLING, ItemID.WINT_VIAL, ItemID.WINT_HERB})
+            { assertFalse(WintertodtHighlight.inventoryItem(s, heal, irrelevant)); }
+        }
     }
 
 }

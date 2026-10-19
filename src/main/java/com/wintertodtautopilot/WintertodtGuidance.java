@@ -88,8 +88,10 @@ public final class WintertodtGuidance
         { return "Leave braziers unlit. Recovery can take time; watch the energy trend."; }
         if ("solo_coverage_unknown".equals(o.getReason()) || "solo_signals_unknown".equals(o.getReason()))
         { return "Guidance needs fresh observations before recommending a relight."; }
-        if ("solo_points_heal".equals(o.getReason()))
-        { return "Heal the marked pyromancer. You can fletch roots while running."; }
+        if ("solo_restock".equals(o.getReason()))
+        { return "Refill the potion reserve for warmth and pyromancer healing."; }
+        if (o.getType() == ObjectiveType.HEAL_PYROMANCER)
+        { return "Click the highlighted pyromancer to heal them."; }
         if ("solo_remote_lit".equals(o.getReason())) { return "A remote brazier is still lit. Avoid adding drain at home."; }
         if ("solo_rapid_drain".equals(o.getReason())) { return "Energy is dropping quickly. Feed carried fuel while checking the arena."; }
         if (performing(s, o)) { return "Keep going. Guidance updates when you need to act."; }
@@ -140,7 +142,7 @@ public final class WintertodtGuidance
             case "prepare_supply": return "Gather a reserve for warmth and pyromancer healing. This is a mass-round estimate; food and warm clothing reduce it.";
             case "heal_supply": return "Your local pyromancer needs a potion dose. Gather ingredients to help them.";
             case "brazier_broken": return "Repair your working brazier before feeding or relighting it.";
-            case "local_pyromancer_down": return "Use a rejuvenation potion on the pyromancer so the brazier can drain Wintertodt's energy again.";
+            case "local_pyromancer_down": return "Click Heal on the highlighted pyromancer. This uses one rejuvenation potion dose.";
             case "brazier_unlit": return "Your pyromancer is healthy. Relight the brazier before feeding fuel.";
             case "brazier_unobserved": return "The local brazier is not currently observed. Move closer so guidance can check its state.";
             case "pyromancer_unobserved": return "Move closer to check the pyromancer before trying to relight.";

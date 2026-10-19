@@ -6,7 +6,7 @@ import static org.junit.Assert.*;
 
 public class WintertodtHighlightTest
 {
-    @Test public void healingOnlyHighlightsFinishedPotionsEvenWithFuelInTheObjective()
+    @Test public void healingLeavesAllInventoryItemsQuietEvenWithPotionsAndFuelInTheObjective()
     {
         int[] potions = {ItemID.WINT_POTION1, ItemID.WINT_POTION2, ItemID.WINT_POTION3, ItemID.WINT_POTION4};
         for (int potion : potions)
@@ -17,7 +17,7 @@ public class WintertodtHighlightTest
             {
                 WintertodtSnapshot s = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
                     .brumaRoots(5).brumaKindling(5).currentActivity(activity).build();
-                assertEquals(activity != PlayerActivity.HEALING, WintertodtHighlight.inventoryItem(s, heal, potion));
+                assertFalse(WintertodtHighlight.inventoryItem(s, heal, potion));
                 assertFalse(WintertodtHighlight.inventoryItem(s, heal, ItemID.WINT_BRUMA_ROOT));
                 assertFalse(WintertodtHighlight.inventoryItem(s, heal, ItemID.WINT_BRUMA_KINDLING));
                 assertFalse(WintertodtHighlight.inventoryItem(s, heal, ItemID.WINT_VIAL));
@@ -154,6 +154,23 @@ public class WintertodtHighlightTest
         WintertodtObjective feed = new WintertodtObjective(ObjectiveType.FEED, "Feed", "batch_feed",
             TargetKind.BRAZIER, 5, false, ItemID.WINT_BRUMA_ROOT);
         assertEquals(WintertodtOverlay.color(feed), WintertodtHighlight.inventoryColor(feed, ItemID.WINT_BRUMA_ROOT));
+    }
+
+    @Test public void theSamePotionOnlyGetsAnInventoryCueForPersonalWarmth()
+    {
+        WintertodtSnapshot full = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+            .warmth(100).currentActivity(PlayerActivity.IDLE).build();
+        WintertodtObjective heal = new WintertodtObjective(ObjectiveType.HEAL_PYROMANCER, "Heal the pyromancer",
+            "solo_heal", TargetKind.PYROMANCER, 1, false, ItemID.WINT_POTION4);
+        WintertodtObjective drink = new WintertodtObjective(ObjectiveType.RESTORE_WARMTH, "Drink rejuvenation potion",
+            "warmth_low", TargetKind.NONE, 1, true, ItemID.WINT_POTION4);
+        assertFalse(WintertodtHighlight.inventoryItem(full, heal, ItemID.WINT_POTION4));
+        assertTrue(WintertodtHighlight.needsAttention(full, heal)); // The NPC still pulses.
+        assertEquals("Click the highlighted pyromancer to heal them.", WintertodtGuidance.reassurance(full, heal));
+        WintertodtSnapshot cold = full.toBuilder().warmth(15).build();
+        assertTrue(WintertodtHighlight.inventoryItem(cold, drink, ItemID.WINT_POTION4));
+        assertFalse(WintertodtHighlight.inventoryItem(full, heal, ItemID.WINT_POTION4));
+        assertFalse(WintertodtHighlight.needsAttention(full.toBuilder().currentActivity(PlayerActivity.HEALING).build(), heal));
     }
 
 }

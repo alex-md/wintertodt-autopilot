@@ -29,8 +29,9 @@ final class WintertodtHighlight
     static boolean inventoryItem(WintertodtSnapshot s, WintertodtObjective o, int itemId)
     {
         if (o == null || s.getRoundState() == RoundState.OUTSIDE || WintertodtGuidance.performing(s, o)) { return false; }
-        // Healing uses a finished potion, never fuel carried for a later feeding step.
-        if (o.getType() == ObjectiveType.HEAL_PYROMANCER && WintertodtConstants.doses(itemId) == 0) { return false; }
+        // Heal is a click on the pyromancer. A potion border suggests drinking,
+        // so keep attention on the NPC even though healing consumes a dose.
+        if (o.getType() == ObjectiveType.HEAL_PYROMANCER) { return false; }
         return o.getItemIds().contains(itemId);
     }
 

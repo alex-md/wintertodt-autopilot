@@ -93,7 +93,8 @@ public final class WintertodtSoloEngine implements WintertodtPlanner
                 reducingEnergy ? "solo_opening" : "solo_energy_band");
         }
         // Feed promptly on an unexplained rapid drop, without claiming another player is responsible.
-        if (!finish && phase != SoloPhase.REDUCE_ENERGY && energy.isRapidDrop() && fuel(s) > 0)
+        if (!finish && phase != SoloPhase.REDUCE_ENERGY && energy.isRapidDrop() && fuel(s) > 0
+            && (!gathering(s, settings) || s.getWintertodtEnergy() <= WintertodtSoloEnergyModel.RECOVERY_TRIGGER))
         {
             WorkingCorner lit = nearestLit(s);
             if (lit != WorkingCorner.AUTOMATIC)
@@ -130,7 +131,8 @@ public final class WintertodtSoloEngine implements WintertodtPlanner
         if (!finish && (phase == SoloPhase.RECOVER_ENERGY
             || s.getWintertodtEnergy() <= WintertodtSoloEnergyModel.RECOVERY_TRIGGER))
         {
-            if (fuel(s) > 0 && nearestLit(s) != WorkingCorner.AUTOMATIC && (s.getBrumaRoots() == 0 && s.getBrumaKindling() > 0 || !settings.fletch(s)))
+            if (!gathering(s, settings) && fuel(s) > 0 && nearestLit(s) != WorkingCorner.AUTOMATIC
+                && (batch == ObjectiveType.FEED || s.getBrumaRoots() == 0 && s.getBrumaKindling() > 0 || !settings.fletch(s)))
             { return feed(s, nearestLit(s), "solo_recovery_feed", false); }
             WintertodtObjective healing = pointsHealing(s, settings, true);
             if (healing != null) { return healing; }
@@ -155,6 +157,9 @@ public final class WintertodtSoloEngine implements WintertodtPlanner
         {
             WintertodtObjective healing = pointsHealing(s, settings, false);
             if (healing != null) { return healing; }
+            // An unlit/broken brazier cannot stop woodcutting. Finish gathering
+            // before asking the player to run back for maintenance.
+            if (gathering(s, settings)) { return productive(s, settings, false); }
             WintertodtObjective maintenance = maintain(s, home, false);
             if (maintenance != null) { return maintenance; }
         }
@@ -211,10 +216,20 @@ public final class WintertodtSoloEngine implements WintertodtPlanner
         return action(ObjectiveType.HEAL_PYROMANCER, "Heal the " + destination + " pyromancer", "solo_heal",
             TargetKind.PYROMANCER, destination, 1, false, s.getPotionItem());
     }
+    private boolean gathering(WintertodtSnapshot s, PlannerSettings settings)
+    {
+        // Batch state survives animation gaps, warmth interruptions and relights.
+        int carried = settings.fletch(s) ? s.potentialPointsIfFletched() : s.inventoryPoints();
+        return batch == ObjectiveType.CHOP && s.getBrumaRoots() > 0 && fuel(s) < batchTarget && s.getFreeSlots() > 0
+            && s.getCurrentActivity() != PlayerActivity.FEEDING && s.getCurrentActivity() != PlayerActivity.FLETCHING
+            && s.getPoints() + carried < pointGoal;
+    }
+
     private WintertodtObjective productiveRecovery(WintertodtSnapshot s)
     {
         WorkingCorner lit = nearestLit(s);
-        if (fuel(s) > 0 && lit != WorkingCorner.AUTOMATIC && (s.getBrumaRoots() == 0 && s.getBrumaKindling() > 0 || !previousSettings.fletch(s)))
+        if (!gathering(s, previousSettings) && fuel(s) > 0 && lit != WorkingCorner.AUTOMATIC
+            && (batch == ObjectiveType.FEED || s.getBrumaRoots() == 0 && s.getBrumaKindling() > 0 || !previousSettings.fletch(s)))
         { return feed(s, lit, "solo_remote_feed", false); }
         return unlitWork(s, previousSettings, false);
     }
@@ -283,7 +298,14 @@ public final class WintertodtSoloEngine implements WintertodtPlanner
     private WintertodtObjective chop(WintertodtSnapshot s, int count, String reason)
     { return action(ObjectiveType.CHOP, "Chop " + count + " bruma root" + (count == 1 ? "" : "s"), reason, TargetKind.ROOTS, home, count, false); }
     private WintertodtObjective feed(WintertodtSnapshot s, WorkingCorner destination, String reason, boolean urgent)
-    { return action(ObjectiveType.FEED, "Feed fuel at the " + destination + " brazier", reason, TargetKind.BRAZIER, destination, fuel(s), urgent, s.getBrumaKindling() > 0 ? ItemID.WINT_BRUMA_KINDLING : ItemID.WINT_BRUMA_ROOT); }
+    {
+        // Once a fuel trip starts, finish it instead of returning for a new root
+        // as soon as feeding opens the first inventory slot.
+        if (!"solo_supply_space".equals(reason)) { batch = ObjectiveType.FEED; }
+        return action(ObjectiveType.FEED, "Feed fuel at the " + destination + " brazier", reason,
+            TargetKind.BRAZIER, destination, fuel(s), urgent,
+            s.getBrumaKindling() > 0 ? ItemID.WINT_BRUMA_KINDLING : ItemID.WINT_BRUMA_ROOT);
+    }
     private WintertodtObjective position(WorkingCorner destination, String text, String reason)
     { return action(ObjectiveType.POSITION, text, reason, TargetKind.BRAZIER, destination, 0, false); }
     private WintertodtObjective waitFor(String text, String reason)
@@ -315,7 +337,8 @@ public final class WintertodtSoloEngine implements WintertodtPlanner
     }
     private WintertodtObjective pointsHealing(WintertodtSnapshot s, PlannerSettings settings, boolean recovery)
     {
-        if (settings.getStrategy() == WintertodtStrategy.MASS_XP || s.getRejuvenationDoses() <= 1) { return null; }
+        if (settings.getStrategy() == WintertodtStrategy.MASS_XP || s.getRejuvenationDoses() <= 1
+            || gathering(s, settings)) { return null; }
         // Optional remote healing fits the processing stage, not each newly chopped root.
         boolean roaming = s.getBrumaRoots() > 0 && (batch == ObjectiveType.FLETCH
             || s.getCurrentActivity() == PlayerActivity.FLETCHING || s.getFreeSlots() == 0);

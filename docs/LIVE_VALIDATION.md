@@ -187,8 +187,8 @@ The observation pipeline supports Mass and experimental Solo. Collect initial So
 ## 0.2.3 highlight controls and healing
 
 - [ ] Check scene targets and inventory borders at widths 1 through 4 in fixed, resizable and scaled interfaces. The default is 1 pixel; pulses change opacity without expanding the border.
-- [ ] Carry roots and kindling while a pyromancer needs healing in Mass and Solo. Only the selected finished rejuvenation potion is highlighted, including immediately after feeding stops and with each potion dose variant.
-- [ ] Begin healing: the potion border disappears. Resume feeding: fuel highlights return only when feeding needs to start again.
+- [ ] Carry roots and kindling while a pyromancer needs healing in Mass and Solo. Only the pyromancer receives the healing cue; inventory potions, roots and kindling stay quiet, including immediately after feeding stops and with each potion dose variant.
+- [ ] Begin healing: the pyromancer cue settles. Drop to low personal warmth: the potion border appears for drinking. Resume feeding: fuel highlights return only when feeding needs to start again.
 
 
 ## 0.2.4 Solo batches
@@ -198,3 +198,15 @@ The observation pipeline supports Mass and experimental Solo. Collect initial So
 - [ ] With only a remote brazier lit, repeat a partial fletch followed by gathering, including when the remote brazier is only known from the HUD. No alternating one-root loop.
 - [ ] Observe an injured remote pyromancer during recovery chopping. Optional healing waits for processing; warmth restoration still takes priority and resumes the batch afterward.
 - [ ] Near the Solo goal, collect only the remaining useful roots and fletch them together. Check a six-root Mass batch too; late-round deadline guidance must still take priority.
+
+
+## Follow-up: stable fuel batches and potion trips
+
+- [ ] In Solo, light the working brazier and start a six-root batch. Extinguish/break it after each new root: keep gathering through animation gaps, then maintain it once the batch is ready. Repeat in Mass.
+- [ ] In Solo Points mode, damage the working pyromancer during chopping: optional healing waits until the batch is ready. Warmth restoration and intentional finishing still interrupt promptly.
+- [ ] In Solo XP / Never fletch, leave only a remote brazier lit. Gather the whole batch, feed all its roots, then start another batch. Repeat during energy recovery with an already lit brazier.
+- [ ] During gathering, a rapid drop above the recovery floor does not force a one-root trip. A rapid drop to critical energy still cashes out carried fuel; feeding continues even after the trend expires.
+- [ ] Drink from eight to seven doses during Solo gathering, then fletch and feed. Restocking starts after the last fuel is fed; at one remaining dose it takes priority. Complete one restock, consume one dose, and confirm no immediate top-up trip.
+- [ ] Enable Solo mid-round with twelve doses: continue without topping up to twenty-four. Pre-round preparation still requests the full reserve. Check ingredient/mixing space when supplies actually run low.
+
+- [ ] At 100% warmth, never request drinking/eating or a warmth retreat, even with Restore warmth at set to 100. Restore warmth from a low reading between game ticks: the obsolete drink instruction and potion cue disappear on the next client frame, then routine guidance continues. Repeat in Mass and Solo; healing a pyromancer highlights the NPC, with no inventory potion cue.

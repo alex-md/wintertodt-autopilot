@@ -1,23 +1,24 @@
 # Plugin Hub release checks
 
-Release: **0.2.4 — Solo chopping and fletching batches**, prepared 18 October 2026.
+Release: **0.2.5 — Stable batches, potion trips and healing cues**, prepared 18 October 2026.
 
 ## What changed
 
-- Solo recovery and remote-brazier work finish a chopping batch before fletching. Leftover kindling no longer forces each new root into fletching.
-- Finished partial fletching batches clear correctly. Chopping targets carry across recovery and relighting instead of falling back to one root.
-- Optional remote pyromancer healing waits until processing, avoiding trips during recovery chopping. Warmth and required maintenance retain priority.
-- Includes the pending 0.2.3 changes: thin adjustable highlight borders, opacity-only pulses, and potion-only pyromancer healing cues.
+- Solo gathering survives local maintenance, optional healing, remote-brazier feeding and noncritical rapid-drain advice. Feeding completes the current fuel batch after the first inventory slot opens. Critical rapid drain, warmth safety and intentional finishing can still interrupt.
+- Mass chopping survives brief idle animation gaps before returning for maintenance.
+- New routine Solo restocks wait until carried fuel is fed when more than one dose remains. A usable partial reserve is accepted when enabling mid-round. Started restock trips still finish their target.
+- Healing highlights only the pyromancer. Inventory potion borders now mean drinking for personal warmth; thin borders and fading pulses are unchanged.
+- Full warmth cannot request restoration or a low-warmth alert. Obsolete drink instructions clear between game ticks once warmth recovers.
 - No new in-game release notice. The existing 0.2.1 notice and saved marker are unchanged.
 
 ## Validation
 
-`./gradlew clean build previewOverlay --no-daemon --console=plain` passed: 205 tests, no failures, errors or skips. The synthetic overlay preview was inspected; packaged legal resources match, all 56 classes target Java 11, the unchanged icon meets Hub limits, and `git diff --check` passed. Regression coverage includes partial fletching followed by gathering, recovery-to-sustain transitions with and without kindling, remote-brazier work, goal-sized batches, XP / Never fletch, warmth interruptions, optional healing, and a complete six-root Mass cycle.
+`./gradlew clean build previewOverlay --no-daemon --console=plain` passed: 221 tests, no failures, errors or skips. The synthetic overlay preview was inspected. Release packaging checks cover legal resources, Java 11 classes, icon limits, README local links and `git diff --check`.
 
 The synthetic preview does not establish live gameplay validation. Outstanding checks remain in [LIVE_VALIDATION.md](LIVE_VALIDATION.md).
 
 ## Submission
 
-Submit through the existing Plugin Hub PR [#18829](https://github.com/runelite/plugin-hub/pull/18829) for 0.2.4 after publishing the source commit. Change only `plugins/wintertodt-autopilot` and use the full source hash. Hub CI, maintainer merge and distribution are separate from local validation.
+The previous [0.2.4 submission](https://github.com/runelite/plugin-hub/pull/18829) is merged. Submit 0.2.5 as a new Plugin Hub PR after publishing the source commit. Change only `plugins/wintertodt-autopilot` and use the full source hash. Hub CI, maintainer merge and distribution are separate from local validation.
 
 The player performs every gameplay interaction. No new runtime dependencies or resources are introduced. The existing icon and legal notices are unchanged.

@@ -10,11 +10,13 @@ Instructions stay in one movable panel. The highlighted target shows where to cl
 
 You still do every click. The plugin doesn't play for you.
 
-## Latest update — 0.2.4
+## Latest update — 0.2.5
 
-Solo keeps chopping and fletching in batches, including while energy recovers and after relighting. Leftover kindling no longer causes one-root chopping and fletching loops. Optional remote healing waits until the chopping batch is done.
+Solo finishes chopping batches before returning for repairs, relighting or optional healing. Feeding continues through the remaining fuel instead of restarting chopping after the first item. Mass chopping also survives brief animation gaps.
 
-Highlights use thin borders by default. Adjust **Highlight border width** (1–4 pixels) in the built-in settings. Attention pulses fade the border without making it thicker. Healing a pyromancer highlights only the rejuvenation potion, never roots or kindling.
+Routine Solo potion trips wait until carried fuel is fed, unless only one dose remains. Enabling mid-round accepts a usable partial reserve.
+
+Healing highlights the pyromancer, with no inventory potion border. Potion highlights mean drinking for your own warmth. Borders stay thin and subtle, with the existing width setting and fading pulse. Full warmth never prompts drinking, and recovered warmth clears an obsolete drink instruction between game ticks.
 
 ## Get started
 

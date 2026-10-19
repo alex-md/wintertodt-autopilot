@@ -39,7 +39,7 @@ public final class WintertodtAttentionTracker
             if (s.getPoints() >= 0) { lastPoints = s.getPoints(); }
         }
         boolean low = (s.active() || objective.getType() == ObjectiveType.RESTORE_WARMTH) && s.getWarmth() >= 0
-            && s.getWarmth() <= Math.min(config.emergencyWarmth(), config.restoreWarmth())
+            && s.getWarmth() < 100 && s.getWarmth() <= Math.min(config.emergencyWarmth(), config.restoreWarmth())
             && s.getCurrentActivity() != PlayerActivity.RESTORING_WARMTH;
         if (!low) { lowNotified = false; }
         if (newCountdown) { startNotified = false; }

@@ -145,17 +145,38 @@ public class WintertodtAutopilotPlugin extends Plugin
             solo.getEnergyTrend(), solo.getTransitionReason(), solo.isFinishRequested())); }
         snapshot = next; objective = chosen;
         potionTargetDoses = planner.getPreparationDoseTarget();
-        if (isPaused())
-        {
-            clearGuidance();
-            return;
-        }
+        updateCues();
+        if (isPaused()) { return; }
+        String message = attention.notification(snapshot, objective, config, client.getTickCount());
+        if (message != null) { notifier.notify(message); }
+    }
+    @Subscribe
+    public void onClientTick(ClientTick event)
+    {
+        // The warmth varbit can change between game ticks. Retire an obsolete
+        // drink/retreat instruction before another frame displays its potion cue.
+        if (objective == null || objective.getType() != ObjectiveType.RESTORE_WARMTH
+            || client.getGameState() != GameState.LOGGED_IN) { return; }
+        Player player = client.getLocalPlayer();
+        if (player == null || player.getWorldLocation().getRegionID() != WintertodtConstants.REGION) { return; }
+        int rawWarmth = client.getVarbitValue(net.runelite.api.gameval.VarbitID.WINT_WARMTH);
+        if (rawWarmth < 0 || rawWarmth > 1000) { return; }
+        int warmth = rawWarmth / 10;
+        PlannerSettings settings = PlannerSettings.from(config);
+        if (warmth < 100 && warmth <= settings.getRestoreWarmth()) { return; }
+        snapshot = snapshot.toBuilder().warmth(warmth).rawWarmth(rawWarmth).build();
+        WintertodtPlanner planner = config.mode() == WintertodtMode.SOLO ? solo : engine;
+        objective = planner.decide(snapshot, settings);
+        potionTargetDoses = planner.getPreparationDoseTarget();
+        updateCues();
+    }
+    private void updateCues()
+    {
+        if (isPaused()) { clearGuidance(); return; }
         resolveTarget();
         boolean needsCue = !WintertodtGuidance.performing(snapshot, objective);
         paths.update(targetPoint, targetObject, targetNpc, needsCue && (config.showPath() || config.highlightStandingTiles()));
         arrow.update(targetNpc, targetPoint, needsCue && config.showHintArrow());
-        String message = attention.notification(snapshot, objective, config, client.getTickCount());
-        if (message != null) { notifier.notify(message); }
     }
     private void clearGuidance()
     {
