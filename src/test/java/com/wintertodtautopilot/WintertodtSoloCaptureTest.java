@@ -6,8 +6,9 @@ import static org.junit.Assert.*;
 
 public class WintertodtSoloCaptureTest
 {
+    private final WintertodtSoloCapture capture = new WintertodtSoloCapture(net.runelite.http.api.RuneLiteAPI.GSON);
     private final WintertodtSoloEngine source = new WintertodtSoloEngine();
-    private final WintertodtSoloCapture.Replay replay = new WintertodtSoloCapture.Replay();
+    private final WintertodtSoloCapture.Replay replay = capture.new Replay();
     private boolean first = true;
     private long sequence;
 
@@ -17,13 +18,13 @@ public class WintertodtSoloCaptureTest
         if (event == WintertodtSoloCapture.Lifecycle.RESET) { source.reset(); }
         WintertodtSnapshot s = WintertodtSoloReliabilityTest.observed(tick, energy, 100, roots, BrazierState.UNLIT)
             .toBuilder().interaction("Private player name").build();
-        JsonElement before = WintertodtSoloCapture.checkpoint(source);
+        JsonElement before = capture.checkpoint(source);
         source.configure(5000, finish);
         WintertodtObjective o = source.decide(s, WintertodtSoloReliabilityTest.SETTINGS);
-        String encoded = WintertodtSoloCapture.encode(s, WintertodtSoloReliabilityTest.SETTINGS, 5000, finish,
+        String encoded = capture.encode(s, WintertodtSoloReliabilityTest.SETTINGS, 5000, finish,
             event, first, sequence++, before, o, source.getPhase(), null);
         first = false;
-        replay.accept(WintertodtSoloCapture.decode("client-log-prefix " + encoded));
+        replay.accept(capture.decode("client-log-prefix " + encoded));
         return encoded;
     }
 
@@ -58,7 +59,7 @@ public class WintertodtSoloCaptureTest
     }
 
     @Test(expected = IllegalArgumentException.class) public void incompatibleOrIncompleteCaptureIsRejected()
-    { WintertodtSoloCapture.decode(WintertodtSoloCapture.PREFIX + "{\"revision\":\"unknown\"}"); }
+    { capture.decode(WintertodtSoloCapture.PREFIX + "{\"revision\":\"unknown\"}"); }
 
     @Test(expected = IllegalStateException.class) public void droppedDuplicateTickRecordIsDetectedEvenWithUnchangedControllerState()
     {
@@ -103,12 +104,12 @@ public class WintertodtSoloCaptureTest
             PlannerSettings settings = tick < 312 ? WintertodtEffortPolicyTest.ACTIVE : WintertodtEffortPolicyTest.COMFORTABLE;
             WintertodtSnapshot s = WintertodtEffortPolicyTest.scene(tick, 25, 24).toBuilder()
                 .personalDosesUsed(tick % 10 == 0 ? 1 : 0).build();
-            JsonElement before = WintertodtSoloCapture.checkpoint(source);
+            JsonElement before = capture.checkpoint(source);
             source.configure(5000, tick >= 313);
             WintertodtObjective chosen = source.decide(s, settings);
-            String line = WintertodtSoloCapture.encode(s, settings, 5000, tick >= 313,
+            String line = capture.encode(s, settings, 5000, tick >= 313,
                 WintertodtSoloCapture.Lifecycle.NONE, tick == 0, tick, before, chosen, source.getPhase(), null);
-            replay.accept(WintertodtSoloCapture.decode(line));
+            replay.accept(capture.decode(line));
             if (tick == 311) { assertEquals(40, source.getPreparationDoseTarget()); }
         }
         assertEquals(316, replay.getDecisions()); assertTrue(source.isFinishRequested());

@@ -70,13 +70,14 @@ public class WintertodtWarmthSafetyTest
             when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(1000);
             java.lang.reflect.Field soloField = WintertodtAutopilotPlugin.class.getDeclaredField("solo");
             soloField.setAccessible(true);
-            com.google.gson.JsonElement before = WintertodtSoloCapture.checkpoint((WintertodtSoloEngine) soloField.get(plugin));
+            WintertodtSoloCapture capture = new WintertodtSoloCapture(net.runelite.http.api.RuneLiteAPI.GSON);
+            com.google.gson.JsonElement before = capture.checkpoint((WintertodtSoloEngine) soloField.get(plugin));
             plugin.onClientTick(new ClientTick());
             assertEquals(100, plugin.getSnapshot().getWarmth());
             assertNotEquals(ObjectiveType.RESTORE_WARMTH, plugin.getObjective().getType());
             assertFalse(WintertodtHighlight.inventoryItem(plugin.getSnapshot(), plugin.getObjective(), ItemID.WINT_POTION4));
             assertEquals(10, plugin.getSnapshot().getObservationTick()); // No extra game tick was manufactured.
-            assertEquals(before, WintertodtSoloCapture.checkpoint((WintertodtSoloEngine) soloField.get(plugin)));
+            assertEquals(before, capture.checkpoint((WintertodtSoloEngine) soloField.get(plugin)));
             WintertodtObjective resumed = plugin.getObjective();
             plugin.onClientTick(new ClientTick());
             assertSame(resumed, plugin.getObjective());

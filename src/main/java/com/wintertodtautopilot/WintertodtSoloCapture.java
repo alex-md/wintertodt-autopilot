@@ -15,14 +15,16 @@ final class WintertodtSoloCapture
     static final String PREFIX = "solo_capture_v1 ";
     // Checkpoints deliberately bind replay to this controller revision. Bump on incompatible changes.
     private static final String REVISION = "phase3-healing-cues-4";
-    private static final Gson GSON = new Gson();
+    private final Gson gson;
+    @javax.inject.Inject
+    WintertodtSoloCapture(Gson gson) { this.gson = gson; }
     enum Lifecycle { NONE, RESET, SUSPEND }
 
-    static JsonElement checkpoint(WintertodtSoloEngine engine) { return GSON.toJsonTree(engine); }
-    static WintertodtSoloEngine restore(JsonElement checkpoint)
-    { return GSON.fromJson(checkpoint, WintertodtSoloEngine.class); }
+    JsonElement checkpoint(WintertodtSoloEngine engine) { return gson.toJsonTree(engine); }
+    WintertodtSoloEngine restore(JsonElement checkpoint)
+    { return gson.fromJson(checkpoint, WintertodtSoloEngine.class); }
 
-    static String encode(WintertodtSnapshot snapshot, PlannerSettings settings, int pointGoal,
+    String encode(WintertodtSnapshot snapshot, PlannerSettings settings, int pointGoal,
         boolean requestFinish, Lifecycle lifecycle, boolean segmentStart, long sequence, JsonElement before,
         WintertodtObjective expected, SoloPhase phase, Client client)
     {
@@ -42,15 +44,15 @@ final class WintertodtSoloCapture
             if (c.getBrazierSource() == CornerObservation.Source.DIRECT_SCENE && c.brazierFresh(snapshot.getObservationTick())
                 && remote != null && remote != BrazierState.UNKNOWN && remote != c.getBrazierState()) { r.hudSceneConflict = true; }
         }
-        return PREFIX + GSON.toJson(r);
+        return PREFIX + gson.toJson(r);
     }
 
-    static Record decode(String line)
+    Record decode(String line)
     {
         int start = line.indexOf(PREFIX);
         if (start < 0) { throw new IllegalArgumentException("Not a Solo capture line"); }
         if (line.length() > 1_000_000) { throw new IllegalArgumentException("Capture line is too large"); }
-        Record r = GSON.fromJson(line.substring(start + PREFIX.length()), Record.class);
+        Record r = gson.fromJson(line.substring(start + PREFIX.length()), Record.class);
         if (r == null || !REVISION.equals(r.revision) || r.snapshot == null || r.settings == null
             || r.before == null || !r.before.isJsonObject() || r.expected == null || r.phase == null || r.lifecycle == null)
         { throw new IllegalArgumentException("Unsupported or incomplete Solo capture"); }
@@ -102,7 +104,7 @@ final class WintertodtSoloCapture
     }
 
     /** Replays consecutive decisions, seeding only at an explicitly marked capture boundary. */
-    static final class Replay
+    final class Replay
     {
         private WintertodtSoloEngine engine;
         private int decisions;

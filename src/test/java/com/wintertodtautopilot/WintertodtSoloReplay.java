@@ -11,7 +11,8 @@ public final class WintertodtSoloReplay
     public static void main(String[] args) throws Exception
     {
         if (args.length != 1) { throw new IllegalArgumentException("Provide one trace file path"); }
-        WintertodtSoloCapture.Replay replay = new WintertodtSoloCapture.Replay();
+        WintertodtSoloCapture capture = new WintertodtSoloCapture(net.runelite.http.api.RuneLiteAPI.GSON);
+        WintertodtSoloCapture.Replay replay = capture.new Replay();
         try (BufferedReader reader = Files.newBufferedReader(Path.of(args[0]), StandardCharsets.UTF_8))
         {
             String line; int number = 0;
@@ -19,7 +20,7 @@ public final class WintertodtSoloReplay
             {
                 number++;
                 if (!line.contains(WintertodtSoloCapture.PREFIX)) { continue; }
-                try { replay.accept(WintertodtSoloCapture.decode(line)); }
+                try { replay.accept(capture.decode(line)); }
                 catch (RuntimeException e) { throw new IllegalStateException("Replay failed on line " + number, e); }
             }
         }

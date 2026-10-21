@@ -27,6 +27,7 @@ public class WintertodtAutopilotPlugin extends Plugin
     static final String UPDATE_NOTICE_KEY = "lastUpdateNotice";
     static final String UPDATE_NOTICE = "Wintertodt Autopilot 0.3.0: Solo mode is ready! Pick Solo in settings, set your point goal, and choose Comfortable or Active. Potion prep, recovery and healing cues have been improved. You still do every click.";
     @Inject private Client client;
+    @Inject private WintertodtSoloCapture soloCapture;
     @Inject private ClientThread clientThread;
     @Inject private ConfigManager configManager;
     @Inject private WintertodtAutopilotConfig config;
@@ -165,7 +166,7 @@ public class WintertodtAutopilotPlugin extends Plugin
         com.google.gson.JsonElement before = null;
         if (capture)
         {
-            try { before = WintertodtSoloCapture.checkpoint(solo); }
+            try { before = soloCapture.checkpoint(solo); }
             catch (RuntimeException e) { captureFault(e); capture = false; }
         }
         boolean requestFinish = soloMode && !verifiedBoundary && next.active() && config.finishSoloRound();
@@ -190,7 +191,7 @@ public class WintertodtAutopilotPlugin extends Plugin
             try
             {
                 if (!captureRunning) { captureSequence = 0; }
-                log.debug("{}", WintertodtSoloCapture.encode(next, settings, config.soloPointGoal(), requestFinish,
+                log.debug("{}", soloCapture.encode(next, settings, config.soloPointGoal(), requestFinish,
                     captureLifecycle, !captureRunning, captureSequence++, before, chosen, solo.getPhase(), client));
                 captureLifecycle = WintertodtSoloCapture.Lifecycle.NONE;
                 String summary = runSummary.observe(next, chosen, solo.getPhase());

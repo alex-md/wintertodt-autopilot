@@ -53,6 +53,7 @@ public class WintertodtSoloIntegrationTest
         });
         when(client.getGameState()).thenReturn(GameState.LOGGED_IN); when(client.getLocalPlayer()).thenReturn(player);
         when(player.getWorldLocation()).thenReturn(WorkingCorner.SOUTHWEST.location());
+        TrackerTestSupport.inject(plugin, "soloCapture", new WintertodtSoloCapture(net.runelite.http.api.RuneLiteAPI.GSON));
         when(client.getWidget(anyInt())).thenThrow(new IllegalStateException("Synthetic capture failure"));
         when(tracker.snapshot(any())).thenReturn(WintertodtSoloReliabilityTest.observed(1, 28, 100, 0, BrazierState.LIT));
         plugin.onGameTick(new GameTick());
