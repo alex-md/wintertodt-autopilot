@@ -27,7 +27,11 @@ public class WintertodtInventoryTracker
     {
         ItemContainer inventory = client.getItemContainer(InventoryID.INV);
         ItemContainer equipment = client.getItemContainer(InventoryID.WORN);
-        Item[] items = inventory == null ? new Item[0] : inventory.getItems();
+        Item[] observedItems = inventory == null ? null : inventory.getItems();
+        Item[] wornItems = equipment == null ? null : equipment.getItems();
+        boolean inventoryKnown = observedItems != null;
+        boolean equipmentKnown = wornItems != null;
+        Item[] items = inventoryKnown ? observedItems : new Item[0];
         int roots = 0, kindling = 0, food = 0, doses = 0, herbs = 0, unfinished = 0, occupied = 0;
         int bestFood = -1, potion = -1, smallestDose = 5;
         boolean knife = false, fletchingKnife = false, hammer = false, tinder = false, torch = false, axe = false;
@@ -52,10 +56,10 @@ public class WintertodtInventoryTracker
             torch |= torch(id);
             axe |= axe(id);
         }
-        int warmItems = equipment == null ? -1 : 0;
-        if (equipment != null)
+        int warmItems = equipmentKnown ? 0 : -1;
+        if (equipmentKnown)
         {
-            for (Item item : equipment.getItems())
+            for (Item item : wornItems)
             {
                 if (item.getId() < 0) { continue; }
                 fletchingKnife |= item.getId() == ItemID.FLETCHING_KNIFE;
@@ -65,8 +69,9 @@ public class WintertodtInventoryTracker
                 if (WintertodtWarmClothing.isWarm(client.getItemDefinition(item.getId()).getName())) { warmItems++; }
             }
         }
-        b.brumaRoots(roots).brumaKindling(kindling).foodCount(food).rejuvenationDoses(doses)
-            .unfinishedPotionCount(unfinished).brumaHerbCount(herbs).freeSlots(28 - occupied)
+        b.inventoryKnown(inventoryKnown).equipmentKnown(equipmentKnown)
+            .brumaRoots(roots).brumaKindling(kindling).foodCount(food).rejuvenationDoses(doses)
+            .unfinishedPotionCount(unfinished).brumaHerbCount(herbs).freeSlots(inventoryKnown ? 28 - occupied : 0)
             .warmthItem(potion >= 0 ? potion : bestFood).potionItem(potion)
             .hasKnife(knife).hasFletchingKnife(fletchingKnife).hasHammer(hammer).hasTinderbox(tinder).hasBrumaTorch(torch).hasAxe(axe)
             .warmClothingCount(warmItems < 0 ? -1 : Math.min(4, warmItems));
@@ -110,10 +115,26 @@ public class WintertodtInventoryTracker
     public boolean changed()
     {
         ItemContainer container = client.getItemContainer(InventoryID.INV);
-        Item[] current = container == null ? new Item[0] : container.getItems();
+        Item[] current = container == null ? null : container.getItems();
+        if (current == null) { previous = new Item[0]; return false; }
         boolean changed = !Arrays.equals(previous, current);
         previous = current.clone();
         return changed;
+    }
+    /** Called before changed() advances the previous inventory. Covers partial food transformations. */
+    public boolean quantityDecreased(int itemId)
+    {
+        if (itemId < 0) { return false; }
+        ItemContainer container = client.getItemContainer(InventoryID.INV);
+        Item[] current = container == null ? null : container.getItems();
+        if (current == null) { return false; }
+        return quantity(previous, itemId) > quantity(current, itemId);
+    }
+    private static int quantity(Item[] items, int itemId)
+    {
+        int count = 0;
+        for (Item item : items) { if (item.getId() == itemId) { count += item.getQuantity(); } }
+        return count;
     }
     public void reset() { previous = new Item[0]; }
 }

@@ -32,13 +32,17 @@ public class WintertodtRoundTracker
         int tick = client.getTickCount();
         // The current HUD puts "Wintertodt's Energy: 70%" in the bar title.
         // ENERGY is a legacy widget and can be hidden/empty in the live interface.
-        int energy = readNumber(client.getWidget(InterfaceID.WintStatus.ENERGY_TITLE));
+        String titleText = visibleText(client.getWidget(InterfaceID.WintStatus.ENERGY_TITLE));
+        String legacyText = visibleText(client.getWidget(InterfaceID.WintStatus.ENERGY));
+        String scoreText = visibleText(client.getWidget(InterfaceID.WintStatus.POINTS));
+        b.energyTitleText(titleText).energyText(legacyText).pointsText(scoreText);
+        int energy = parseNumber(titleText);
         if (energy < 0 || energy > 100)
         {
-            energy = readNumber(client.getWidget(InterfaceID.WintStatus.ENERGY));
+            energy = parseNumber(legacyText);
         }
         if (energy > 100) { energy = -1; }
-        int points = readNumber(client.getWidget(InterfaceID.WintStatus.POINTS));
+        int points = parseNumber(scoreText);
         int seconds = client.getVarbitValue(VarbitID.WINT_TRANSMIT_RESPAWNDELAY) * 30 / 50;
         RoundState state;
         if (!insidePrison) { state = RoundState.LOBBY; }
@@ -88,9 +92,10 @@ public class WintertodtRoundTracker
     }
     static int readNumber(Widget widget)
     {
-        if (widget == null || widget.isHidden()) { return -1; }
-        return parseNumber(widget.getText());
+        return parseNumber(visibleText(widget));
     }
+    private static String visibleText(Widget widget)
+    { return widget == null || widget.isHidden() || widget.getText() == null ? "" : widget.getText(); }
     static int parseNumber(String text)
     {
         if (text == null) { return -1; }

@@ -11,6 +11,57 @@ import static org.mockito.Mockito.*;
 
 public class WintertodtSoloIntegrationTest
 {
+    @Test public void loadingAndConnectionLossPreserveActualRecoveryController() throws Exception
+    {
+        WintertodtAutopilotPlugin plugin = new WintertodtAutopilotPlugin();
+        TrackerTestSupport.inject(plugin, "config", new WintertodtAutopilotConfig() { });
+        TrackerTestSupport.inject(plugin, "tracker", mock(WintertodtStateTracker.class));
+        TrackerTestSupport.inject(plugin, "objects", mock(WintertodtObjectTracker.class));
+        TrackerTestSupport.inject(plugin, "npcs", mock(WintertodtNpcTracker.class));
+        TrackerTestSupport.inject(plugin, "arrow", mock(WintertodtHintArrow.class));
+        TrackerTestSupport.inject(plugin, "paths", mock(WintertodtPathTracker.class));
+        java.lang.reflect.Field field = WintertodtAutopilotPlugin.class.getDeclaredField("solo");
+        field.setAccessible(true);
+        WintertodtSoloEngine engine = (WintertodtSoloEngine) field.get(plugin);
+        engine.decide(WintertodtSoloReliabilityTest.observed(1, 9, 100, 0, BrazierState.UNLIT), WintertodtSoloReliabilityTest.SETTINGS);
+        for (GameState state : new GameState[]{GameState.LOADING, GameState.CONNECTION_LOST})
+        {
+            GameStateChanged event = mock(GameStateChanged.class); when(event.getGameState()).thenReturn(state);
+            plugin.onGameStateChanged(event);
+            assertTrue(engine.recovering()); assertTrue(engine.isAwaitingObservations());
+            assertEquals(6, engine.batchTarget());
+        }
+        assertEquals(ObjectiveType.CHOP, engine.decide(WintertodtSoloReliabilityTest.observed(10, 11, 100, 2, BrazierState.UNLIT),
+            WintertodtSoloReliabilityTest.SETTINGS).getType());
+        assertEquals(SoloPhase.RECOVER_ENERGY, engine.getPhase());
+    }
+
+    @Test public void diagnosticFailureDoesNotPreventGuidanceOrRepeatEveryTick() throws Exception
+    {
+        WintertodtAutopilotPlugin plugin = new WintertodtAutopilotPlugin();
+        Client client = mock(Client.class); Player player = mock(Player.class);
+        WintertodtStateTracker tracker = mock(WintertodtStateTracker.class);
+        TrackerTestSupport.inject(plugin, "client", client); TrackerTestSupport.inject(plugin, "tracker", tracker);
+        TrackerTestSupport.inject(plugin, "configManager", mock(ConfigManager.class));
+        TrackerTestSupport.inject(plugin, "arrow", mock(WintertodtHintArrow.class));
+        TrackerTestSupport.inject(plugin, "paths", mock(WintertodtPathTracker.class));
+        TrackerTestSupport.inject(plugin, "bootstrapNeeded", false);
+        TrackerTestSupport.inject(plugin, "config", new WintertodtAutopilotConfig() {
+            @Override public WintertodtMode mode() { return WintertodtMode.SOLO; }
+            @Override public boolean pauseGuidance() { return true; }
+            @Override public boolean debug() { return true; }
+        });
+        when(client.getGameState()).thenReturn(GameState.LOGGED_IN); when(client.getLocalPlayer()).thenReturn(player);
+        when(player.getWorldLocation()).thenReturn(WorkingCorner.SOUTHWEST.location());
+        when(client.getWidget(anyInt())).thenThrow(new IllegalStateException("Synthetic capture failure"));
+        when(tracker.snapshot(any())).thenReturn(WintertodtSoloReliabilityTest.observed(1, 28, 100, 0, BrazierState.LIT));
+        plugin.onGameTick(new GameTick());
+        assertEquals(ObjectiveType.CHOP, plugin.getObjective().getType());
+        when(tracker.snapshot(any())).thenReturn(WintertodtSoloReliabilityTest.observed(2, 26, 100, 1, BrazierState.LIT));
+        plugin.onGameTick(new GameTick());
+        assertEquals(ObjectiveType.CHOP, plugin.getObjective().getType());
+        verify(client, times(1)).getWidget(anyInt());
+    }
     @Test public void modeSelectionPreservesAutomaticCornerTracking() throws Exception
     {
         WintertodtAutopilotPlugin plugin = new WintertodtAutopilotPlugin();
@@ -28,7 +79,7 @@ public class WintertodtSoloIntegrationTest
         });
         when(client.getGameState()).thenReturn(GameState.LOGGED_IN); when(client.getLocalPlayer()).thenReturn(player);
         when(player.getWorldLocation()).thenReturn(WorkingCorner.SOUTHEAST.location());
-        when(tracker.snapshot(WorkingCorner.AUTOMATIC)).thenReturn(WintertodtSnapshot.builder()
+        when(tracker.snapshot(WorkingCorner.AUTOMATIC)).thenReturn(WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true)
             .roundState(RoundState.ACTIVE).observationTick(1).wintertodtEnergy(100).warmth(80).points(0)
             .workingCorner(WorkingCorner.SOUTHEAST).freeSlots(20).build());
         plugin.onGameTick(new GameTick());
@@ -42,7 +93,7 @@ public class WintertodtSoloIntegrationTest
             @Override public SoloStrategy soloStrategy() { return SoloStrategy.FIREMAKING_XP; }
         });
         assertEquals(WintertodtStrategy.MASS_XP, settings.getStrategy());
-        assertFalse(settings.fletch(WintertodtSnapshot.builder().hasKnife(true).build()));
+        assertFalse(settings.fletch(WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).hasKnife(true).build()));
     }
 
     @Test public void remoteObjectNpcAndFallbackTileUseObjectiveDestination() throws Exception
@@ -51,7 +102,7 @@ public class WintertodtSoloIntegrationTest
         WintertodtObjectTracker objects = mock(WintertodtObjectTracker.class);
         WintertodtNpcTracker npcs = mock(WintertodtNpcTracker.class);
         TrackerTestSupport.inject(plugin, "objects", objects); TrackerTestSupport.inject(plugin, "npcs", npcs);
-        WintertodtSnapshot s = WintertodtSnapshot.builder().workingCorner(WorkingCorner.SOUTHWEST)
+        WintertodtSnapshot s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).workingCorner(WorkingCorner.SOUTHWEST)
             .playerLocation(WorkingCorner.SOUTHWEST.location()).build();
         TrackerTestSupport.inject(plugin, "snapshot", s);
         java.lang.reflect.Method resolve = WintertodtAutopilotPlugin.class.getDeclaredMethod("resolveTarget");
@@ -89,7 +140,7 @@ public class WintertodtSoloIntegrationTest
         });
         when(client.getGameState()).thenReturn(GameState.LOGGED_IN); when(client.getLocalPlayer()).thenReturn(player);
         when(player.getWorldLocation()).thenReturn(WorkingCorner.SOUTHWEST.location());
-        WintertodtSnapshot active = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).observationTick(1)
+        WintertodtSnapshot active = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).observationTick(1)
             .wintertodtEnergy(30).warmth(80).points(0).workingCorner(WorkingCorner.SOUTHWEST).freeSlots(20).build();
         when(tracker.snapshot(any())).thenReturn(active);
         plugin.onGameTick(new GameTick()); assertTrue(plugin.isSoloFinishRequested());

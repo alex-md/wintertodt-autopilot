@@ -28,6 +28,15 @@ public class WintertodtNpcTracker
         NPCComposition composition = npc.getTransformedComposition();
         return composition == null ? -1 : composition.getId();
     }
+    public WorkingCorner cornerForIndex(int index)
+    {
+        for (NPC npc : npcs)
+        {
+            if (npc.getIndex() == index && (id(npc) == NpcID.WINT_WIZARD || id(npc) == NpcID.WINT_WIZARD_DOWN))
+            { return WorkingCorner.nearest(npc.getWorldLocation()); }
+        }
+        return WorkingCorner.AUTOMATIC;
+    }
     public NPC target(TargetKind target, WorldPoint anchor)
     {
         NPC result = null;

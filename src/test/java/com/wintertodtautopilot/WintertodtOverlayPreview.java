@@ -14,12 +14,12 @@ public final class WintertodtOverlayPreview
 {
     public static void main(String[] args) throws Exception
     {
-        BufferedImage image = new BufferedImage(1220, 2000, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage image = new BufferedImage(1220, 2800, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = image.createGraphics();
         graphics.setColor(new Color(34, 38, 41)); graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
         graphics.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13)); graphics.setColor(Color.LIGHT_GRAY);
         graphics.drawString("Synthetic overlay preview - constructed snapshots, not a live game", 20, 25);
-        WintertodtSnapshot base = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).points(425).warmth(78).rawWarmth(780)
+        WintertodtSnapshot base = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).points(425).warmth(78).rawWarmth(780)
             .estimatedSecondsLeft(145).roundBudgetSeconds(127).brazierDistance(0).firemakingLevel(85).warmClothingCount(4).rejuvenationDoses(3).wintertodtEnergy(64).brumaRoots(17).freeSlots(7).localBrazierState(BrazierState.LIT)
             .localPyromancerKnown(true).workingCorner(WorkingCorner.SOUTHEAST).currentActivity(PlayerActivity.FLETCHING).build();
         WintertodtObjective fletch = new WintertodtObjective(ObjectiveType.FLETCH, "Fletch 17 roots", "batch_fletch", TargetKind.NONE, 17, false, ItemID.KNIFE, ItemID.WINT_BRUMA_ROOT);
@@ -106,11 +106,15 @@ public final class WintertodtOverlayPreview
         for (int i = 0; i < 4; i++)
         {
             final int index = i;
+            WintertodtObjective solo = new WintertodtObjective(i == 0 ? ObjectiveType.FLETCH : i == 2 ? ObjectiveType.LIGHT : ObjectiveType.WAIT,
+                instructions[i], reasons[i], i == 2 ? TargetKind.BRAZIER : TargetKind.NONE, 0, false);
+            if (i == 1 || i == 2) { solo = solo.withSoloAdvice(new SoloAdvice(i == 1 ? SoloAdvice.Reason.RECOVERY : SoloAdvice.Reason.FINISH,
+                13500, 425, 9, 0, i == 2, WorkingCorner.AUTOMATIC)); }
             render(graphics, 20 + i * 300, 1170, base.toBuilder().wintertodtEnergy(i == 0 ? 26 : 9)
-                .currentActivity(PlayerActivity.IDLE).build(), new WintertodtObjective(i == 0 ? ObjectiveType.FLETCH : i == 2 ? ObjectiveType.LIGHT : ObjectiveType.WAIT,
-                    instructions[i], reasons[i], i == 2 ? TargetKind.BRAZIER : TargetKind.NONE, 0, false),
+                .currentActivity(PlayerActivity.IDLE).build(), solo,
                 new WintertodtAutopilotConfig() {
                     @Override public WintertodtMode mode() { return WintertodtMode.SOLO; }
+                    @Override public int soloPointGoal() { return 13500; }
                     @Override public boolean finishSoloRound() { return index == 2; }
                 });
         }
@@ -122,6 +126,32 @@ public final class WintertodtOverlayPreview
             new WintertodtAutopilotConfig() { @Override public OverlayDetail overlayDetail() { return OverlayDetail.MINIMAL; } });
         render(graphics, 620, 1580, base.toBuilder().points(500).build(), fletch,
             new WintertodtAutopilotConfig() { @Override public WintertodtMode mode() { return WintertodtMode.SOLO; } });
+        graphics.setColor(Color.LIGHT_GRAY);
+        graphics.drawString("Phase 3: readiness / observed consumption / Comfortable and Active finishing", 20, 1910);
+        WintertodtSnapshot prep = WintertodtEffortPolicyTest.scene(10, 25, 4).toBuilder()
+            .roundState(RoundState.COUNTDOWN).secondsToStart(30).canMixPotion(true).warmClothingCount(2).build();
+        WintertodtSoloEngine preparing = new WintertodtSoloEngine();
+        render(graphics, 20, 1930, prep, preparing.decide(prep, WintertodtEffortPolicyTest.COMFORTABLE),
+            new WintertodtAutopilotConfig() { @Override public WintertodtMode mode() { return WintertodtMode.SOLO; } });
+        for (int i = 0; i < 2; i++)
+        {
+            final boolean active = i == 1;
+            WintertodtAutopilotConfig config = new WintertodtAutopilotConfig() {
+                @Override public WintertodtMode mode() { return WintertodtMode.SOLO; }
+                @Override public SoloEffort soloEffort() { return active ? SoloEffort.ACTIVE : SoloEffort.COMFORTABLE; }
+                @Override public OverlayDetail overlayDetail() { return OverlayDetail.DETAILED; }
+                @Override public boolean finishSoloRound() { return true; }
+            };
+            WintertodtSoloEngine finishing = new WintertodtSoloEngine(); finishing.configure(5000, true);
+            WintertodtSnapshot state = WintertodtEffortPolicyTest.scene(10, 8, 24);
+            render(graphics, 320 + i * 300, 1930, state, finishing.decide(state, PlannerSettings.from(config)), config);
+        }
+        WintertodtSnapshot pending = WintertodtEffortPolicyTest.corner(WintertodtEffortPolicyTest.scene(10, 25, 24),
+            WorkingCorner.SOUTHWEST, BrazierState.UNLIT, CornerObservation.PyromancerState.INCAPACITATED, 0, 10).toBuilder()
+            .currentActivity(PlayerActivity.MOVING).actionActivity(PlayerActivity.HEALING)
+            .actionCorner(WorkingCorner.SOUTHWEST).actionState(WintertodtSnapshot.ActionState.REQUESTED).build();
+        render(graphics, 920, 1930, pending, new WintertodtSoloEngine().decide(pending, WintertodtEffortPolicyTest.COMFORTABLE),
+            new WintertodtAutopilotConfig() { @Override public WintertodtMode mode() { return WintertodtMode.SOLO; } });
         graphics.dispose();
         Path path = Path.of("build", "preview", "overlays.png"); Files.createDirectories(path.getParent());
         ImageIO.write(image, "png", path.toFile());
@@ -130,6 +160,10 @@ public final class WintertodtOverlayPreview
         WintertodtObjective objective, WintertodtAutopilotConfig config)
     {
         WintertodtAutopilotPlugin plugin = mock(WintertodtAutopilotPlugin.class);
+        WintertodtSoloEngine evidence = new WintertodtSoloEngine();
+        evidence.decide(snapshot, PlannerSettings.from(config));
+        when(plugin.getSoloReadiness()).thenReturn(evidence.getReadiness());
+        when(plugin.getSoloReserveDetail()).thenReturn(evidence.getReserveDetail());
         when(plugin.getPotionTargetDoses()).thenReturn(config.mode() == WintertodtMode.SOLO ? config.finishSoloRound() ? 8 : 24 : 4);
         when(plugin.getSoloPhase()).thenReturn(config.finishSoloRound() ? SoloPhase.FINISH
             : objective.getReason().contains("recovery") ? SoloPhase.RECOVER_ENERGY

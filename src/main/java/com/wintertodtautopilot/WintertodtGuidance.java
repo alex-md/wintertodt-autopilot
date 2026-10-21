@@ -64,7 +64,8 @@ public final class WintertodtGuidance
             case FEED: return s.getCurrentActivity() == PlayerActivity.FEEDING;
             case LIGHT: return s.getCurrentActivity() == PlayerActivity.LIGHTING;
             case REPAIR: return s.getCurrentActivity() == PlayerActivity.REPAIRING;
-            case HEAL_PYROMANCER: return s.getCurrentActivity() == PlayerActivity.HEALING;
+            case HEAL_PYROMANCER: return s.getCurrentActivity() == PlayerActivity.HEALING || s.getActionActivity() == PlayerActivity.HEALING
+                && (s.getActionState() == WintertodtSnapshot.ActionState.IN_PROGRESS || s.getActionState() == WintertodtSnapshot.ActionState.CONFIRMED);
             case RESTORE_WARMTH: return s.getCurrentActivity() == PlayerActivity.RESTORING_WARMTH;
             case MAKE_REJUVENATION: return s.getCurrentActivity() == PlayerActivity.MAKING_POTION
                 && "mix_rejuvenation".equals(o.getReason());
@@ -84,12 +85,15 @@ public final class WintertodtGuidance
 
     public static String reassurance(WintertodtSnapshot s, WintertodtObjective o)
     {
+        if (o.getSoloAdvice() != null) { return soloExplanation(o); }
+        if ("solo_route_blocked".equals(o.getReason()))
+        { return "Current collision data has no usable route. Check the arena before continuing."; }
         if (o.getReason().startsWith("solo_recovery"))
         { return "Leave braziers unlit. Recovery can take time; watch the energy trend."; }
         if ("solo_coverage_unknown".equals(o.getReason()) || "solo_signals_unknown".equals(o.getReason()))
         { return "Guidance needs fresh observations before recommending a relight."; }
         if ("solo_restock".equals(o.getReason()))
-        { return "Refill the potion reserve for warmth and pyromancer healing."; }
+        { return "Refill the working potion reserve before continuing."; }
         if (o.getType() == ObjectiveType.HEAL_PYROMANCER)
         { return "Click the highlighted pyromancer to heal them."; }
         if ("solo_remote_lit".equals(o.getReason())) { return "A remote brazier is still lit. Avoid adding drain at home."; }
@@ -110,19 +114,27 @@ public final class WintertodtGuidance
     public static String explanation(WintertodtObjective o)
     {
         if (o == null) { return "Visit Wintertodt on a mass world. Your next action and supply checks appear here automatically."; }
+        if (o.getSoloAdvice() != null) { return soloExplanation(o); }
         String reason = o.getReason();
         switch (reason)
         {
-            case "solo_restock": return "Replenish the Solo working reserve for warmth and pyromancer healing. Further restocks may be needed.";
+            case "supplies_unobserved": return "Waiting for current inventory and equipment data before checking tools or supplies.";
+            case "solo_route_blocked": return "The current scene has no route to a required brazier. Recheck the arena before continuing.";
+            case "warmth_supplies_unknown": return "Warmth is low and supplies are not currently observed. Check your inventory or move to the safe preparation area.";
+            case "solo_score_changed": return "The score no longer matches the observed round. Check the game; a verified countdown or completion will reset the plan. You can also switch modes to start a fresh plan.";
+            case "warmth_restored": return "Warmth has recovered. Your next action updates on the next game tick.";
+            case "solo_restock": return "Refill the working reserve. Confirmed consumption can increase it; more restocks may still be needed.";
+            case "solo_recovery_space": return "Free inventory space manually. Do not relight a brazier to make room during recovery.";
             case "solo_light": return "Current energy and all four brazier observations permit lighting this corner.";
             case "solo_repair": return "Repair this destination before lighting. Energy is checked again on the next tick.";
-            case "solo_points_heal": return "In Points mode, heal observed damage for points. While fletching, nearby injured pyromancers are useful healing opportunities.";
+            case "solo_healing_pending": return "A healing click was requested. Check the pyromancer; guidance retries if no result is observed within three ticks.";
+            case "solo_points_heal": return "Active Points uses fresh injury evidence for optional healing, while keeping personal warmth doses in reserve.";
             case "solo_fletch_inside": return "Fletching is allowed at the roots and while running, but not in the safe preparation area.";
             case "solo_heal": return "Heal this corner's incapacitated pyromancer. Keep a spare dose for personal warmth.";
             case "solo_heal_reserve": return "Prepare more potions before spending your last personal warmth dose.";
             case "solo_goal_feed": return "Carried points could meet your goal. Feed them first; only earned points trigger finishing.";
             case "solo_finish_feed": return "Finishing is active. Feed carried fuel before lighting additional braziers.";
-            case "solo_finish_drain": return "Maintain the selected finish pair, or one nearby brazier when run energy is low.";
+            case "solo_finish_drain": return "Comfortable maintains one selected brazier. Active maintains an adjacent pair when run energy is known and above 10%.";
             case "solo_batch_chop": return "Gather this Solo batch. The mass finish-time estimate does not control Solo gathering.";
             case "solo_batch_fletch": return "Convert the current roots to kindling before feeding them.";
             case "solo_batch_feed": return "Feed your batch to earn its points, then gather toward the fixed Solo goal.";
@@ -165,6 +177,40 @@ public final class WintertodtGuidance
             default: return reason.startsWith("make_space_for_")
                 ? "Feed carried fuel to make room for the missing supplies."
                 : "Follow the highlighted target or inventory items. You perform every interaction.";
+        }
+    }
+
+    private static String soloExplanation(WintertodtObjective o)
+    {
+        SoloAdvice a = o.getSoloAdvice();
+        String goal = String.format(java.util.Locale.US, "%,d", a.getPointGoal());
+        String progress = (a.getEarnedPoints() < 0 ? "Unknown" : String.format(java.util.Locale.US, "%,d", a.getEarnedPoints()))
+            + " / " + goal + " points";
+        switch (a.getReason())
+        {
+            case RECOVERY:
+                if (o.getType() == ObjectiveType.FEED)
+                { return progress + ": feed this already-lit brazier at " + a.getEnergy() + "% energy without relighting another."; }
+                return progress + ": leave braziers unlit at " + a.getEnergy() + "% energy. "
+                    + (a.getLitBraziers() > 0 ? "Recovery waits for the remaining fires to go out." : "Let energy recover before restoring drain.");
+            case REMOTE_FIRE:
+                return progress + ": another brazier is lit. " + (o.getType() == ObjectiveType.FEED
+                    ? "Feed the existing fire; leave the working brazier unlit to limit drain."
+                    : "Leave the working brazier unlit to limit drain while you earn more points.");
+            case GOAL_FEED:
+                return progress + " earned. Feed the carried fuel toward your goal; it only counts once fed.";
+            case FINISH:
+                String finish = a.isManualFinish() ? "Finish requested at " + progress + ". " : progress + " earned - goal reached. ";
+                return finish + (o.getType() == ObjectiveType.FEED ? "Feed remaining fuel, then finish the round."
+                    : "Maintain the selected finish fires to end the round; leave other braziers alone.");
+            case OPENING:
+                return "Energy is " + a.getEnergy() + "%. Maintain opening fires before settling into the points loop (" + progress + ").";
+            case ON_THE_WAY:
+                return progress + ": service this brazier on the route to " + a.getDeferredDestination() + " before continuing there.";
+            case LOCAL_MAINTENANCE:
+                return progress + ": " + (o.getType() == ObjectiveType.REPAIR ? "repair" : "relight")
+                    + " the working brazier so you can feed fuel without lighting extra fires.";
+            default: throw new IllegalStateException("Unknown Solo advice reason");
         }
     }
 }

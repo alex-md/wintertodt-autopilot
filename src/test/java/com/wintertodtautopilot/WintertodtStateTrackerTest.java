@@ -3,6 +3,7 @@ package com.wintertodtautopilot;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.gameval.AnimationID;
 import net.runelite.api.gameval.VarbitID;
 import org.junit.Before;
@@ -17,7 +18,7 @@ public class WintertodtStateTrackerTest
     private WintertodtStateTracker tracker;
     private WintertodtInventoryTracker inventory;
     private WintertodtRoundTracker rounds;
-    private int roots = 10, kindling, points;
+    private int roots = 10, kindling, points, doses = 4;
     private RoundState round = RoundState.ACTIVE;
     @Before public void setup() throws Exception
     {
@@ -38,7 +39,8 @@ public class WintertodtStateTrackerTest
         when(objects.brazier(any())).thenReturn(BrazierState.LIT);
         doAnswer(invocation -> {
             WintertodtSnapshot.WintertodtSnapshotBuilder b = invocation.getArgument(0);
-            b.brumaRoots(roots).brumaKindling(kindling).freeSlots(28-roots-kindling).hasKnife(true).hasAxe(true);
+            b.inventoryKnown(true).equipmentKnown(true).brumaRoots(roots).brumaKindling(kindling).freeSlots(28-roots-kindling).hasKnife(true).hasAxe(true)
+                .rejuvenationDoses(doses).warmthItem(net.runelite.api.gameval.ItemID.WINT_POTION4);
             return null;
         }).when(inventory).fill(any());
         doAnswer(invocation -> {
@@ -154,7 +156,7 @@ public class WintertodtStateTrackerTest
         when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(450);
         doAnswer(invocation -> {
             WintertodtSnapshot.WintertodtSnapshotBuilder b = invocation.getArgument(0);
-            b.brumaRoots(10).hasAxe(true).rejuvenationDoses(4)
+            b.inventoryKnown(true).equipmentKnown(true).brumaRoots(10).hasAxe(true).rejuvenationDoses(4)
                 .warmthItem(net.runelite.api.gameval.ItemID.WINT_POTION4).potionItem(net.runelite.api.gameval.ItemID.WINT_POTION4);
             return null;
         }).when(inventory).fill(any());
@@ -175,4 +177,97 @@ public class WintertodtStateTrackerTest
         assertEquals(-1, tick(11).getRunEnergyPercent());
     }
 
+    private void click(String option, String target, int itemId)
+    {
+        MenuOptionClicked e = mock(MenuOptionClicked.class);
+        when(e.getMenuOption()).thenReturn(option); when(e.getMenuTarget()).thenReturn(target);
+        when(e.getItemId()).thenReturn(itemId);
+        tracker.clicked(e);
+    }
+
+    @Test public void failedPotionClickNeverReleasesWarmthPriorityAndPendingIntentExpires()
+    {
+        when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(180);
+        when(player.getAnimation()).thenReturn(AnimationID.HUMAN_WOODCUTTING_BRONZE_AXE);
+        tick(10);
+        click("Drink", "Rejuvenation potion (4)", net.runelite.api.gameval.ItemID.WINT_POTION4);
+        WintertodtSnapshot requested = tick(11);
+        assertEquals(WintertodtSnapshot.WarmthAction.REQUESTED, requested.getWarmthAction());
+        assertNotEquals(PlayerActivity.RESTORING_WARMTH, requested.getCurrentActivity());
+        PlannerSettings settings = PlannerSettings.from(new WintertodtAutopilotConfig() { });
+        assertEquals(ObjectiveType.RESTORE_WARMTH, new WintertodtDecisionEngine().decide(requested, settings).getType());
+        assertEquals("warmth_low", new WintertodtDecisionEngine().decide(requested, settings).getReason());
+        WintertodtSnapshot unconfirmed = tick(12);
+        assertEquals(WintertodtSnapshot.WarmthAction.UNCONFIRMED, unconfirmed.getWarmthAction());
+        assertEquals(ObjectiveType.RESTORE_WARMTH, new WintertodtSoloEngine().decide(unconfirmed, settings).getType());
+    }
+
+    @Test public void potionConsumptionAndWarmthRiseConfirmRestorationWithoutSuppressingRemainingLowWarmth()
+    {
+        final int[] doses = {4};
+        doAnswer(i -> {
+            WintertodtSnapshot.WintertodtSnapshotBuilder b = i.getArgument(0);
+            b.inventoryKnown(true).equipmentKnown(true).rejuvenationDoses(doses[0])
+                .warmthItem(net.runelite.api.gameval.ItemID.WINT_POTION4);
+            return null;
+        }).when(inventory).fill(any());
+        when(inventory.changed()).thenReturn(true);
+        when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(100);
+        tick(10);
+        click("Drink", "Rejuvenation potion (4)", net.runelite.api.gameval.ItemID.WINT_POTION4);
+        doses[0] = 3;
+        when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(400);
+        WintertodtSnapshot confirmed = tick(11);
+        assertEquals(WintertodtSnapshot.WarmthAction.CONFIRMED, confirmed.getWarmthAction());
+        assertEquals(PlayerActivity.RESTORING_WARMTH, confirmed.getCurrentActivity());
+        assertEquals(ObjectiveType.RESTORE_WARMTH, WintertodtSafety.objective(confirmed,
+            PlannerSettings.from(new WintertodtAutopilotConfig() { })).getType());
+        assertNotEquals(PlayerActivity.RESTORING_WARMTH, tick(12).getCurrentActivity());
+    }
+
+    @Test public void naturalRegenerationAndOtherInventoryChangesAreNotPersonalPotionConfirmation()
+    {
+        when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(400);
+        when(inventory.changed()).thenReturn(true);
+        tick(10); roots++;
+        when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(520);
+        WintertodtSnapshot regenerated = tick(11);
+        assertNotEquals(PlayerActivity.RESTORING_WARMTH, regenerated.getCurrentActivity());
+        assertEquals(WintertodtSnapshot.WarmthAction.NONE, regenerated.getWarmthAction());
+    }
+
+    @Test public void partialFoodTransformationCanConfirmRestoration()
+    {
+        when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(180);
+        tick(10);
+        click("Eat", "Cake", net.runelite.api.gameval.ItemID.CAKE);
+        when(inventory.changed()).thenReturn(true);
+        when(inventory.quantityDecreased(net.runelite.api.gameval.ItemID.CAKE)).thenReturn(true);
+        when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(530);
+        assertEquals(WintertodtSnapshot.WarmthAction.CONFIRMED, tick(11).getWarmthAction());
+    }
+
+    @Test public void healingAPyromancerAndNaturalRegenerationCannotConfirmAnEarlierDrinkRequest()
+    {
+        when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(180);
+        when(inventory.changed()).thenReturn(true);
+        tick(10);
+        click("Drink", "Rejuvenation potion (4)", net.runelite.api.gameval.ItemID.WINT_POTION4);
+        click("Help", "Pyromancer", -1);
+        doses = 3;
+        when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(300);
+        assertEquals(WintertodtSnapshot.WarmthAction.NONE, tick(11).getWarmthAction());
+    }
+
+
+    @Test public void aHealingMenuClickIsOnlyARequestAndCannotSuppressTheTarget()
+    {
+        tick(10); click("Help", "Pyromancer", -1);
+        WintertodtSnapshot requested = tick(11);
+        assertEquals(WintertodtSnapshot.ActionState.REQUESTED, requested.getActionState());
+        assertNotEquals(PlayerActivity.HEALING, requested.getCurrentActivity());
+        assertEquals(0, requested.getHealingDosesUsed());
+        tick(12); tick(13);
+        assertEquals(WintertodtSnapshot.ActionState.UNCONFIRMED, tick(14).getActionState());
+    }
 }

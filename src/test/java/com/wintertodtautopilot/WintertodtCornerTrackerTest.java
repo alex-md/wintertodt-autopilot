@@ -29,7 +29,7 @@ public class WintertodtCornerTrackerTest
         assertEquals(BrazierState.UNKNOWN, remote.getBrazierState());
         assertEquals(-1, remote.getBrazierObservedTick());
         assertFalse(remote.brazierFresh(10));
-        assertEquals(-1, WintertodtSnapshot.builder().observationTick(10).corners(observations).build().observedGlobalLitBraziers());
+        assertEquals(-1, WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).observationTick(10).corners(observations).build().observedGlobalLitBraziers());
     }
 
     @Test public void losingVisibilityImmediatelyClearsStateAndHistoryExpiresAfterEightTicks()
@@ -57,12 +57,12 @@ public class WintertodtCornerTrackerTest
             if (c != WorkingCorner.AUTOMATIC) { when(objects.brazierAt(c)).thenReturn(BrazierState.UNLIT); }
         }
         when(objects.brazierAt(WorkingCorner.NORTHEAST)).thenReturn(BrazierState.LIT);
-        WintertodtSnapshot snapshot = WintertodtSnapshot.builder().observationTick(10)
+        WintertodtSnapshot snapshot = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).observationTick(10)
             .corners(tracker.observe(10, objects, npcs)).build();
         assertEquals(1, snapshot.observedGlobalLitBraziers());
         assertEquals(-1, snapshot.toBuilder().observationTick(19).build().observedGlobalLitBraziers());
         when(objects.brazierAt(WorkingCorner.NORTHEAST)).thenReturn(BrazierState.UNLIT);
-        assertEquals(0, WintertodtSnapshot.builder().observationTick(11)
+        assertEquals(0, WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).observationTick(11)
             .corners(tracker.observe(11, objects, npcs)).build().observedGlobalLitBraziers());
     }
 
@@ -97,7 +97,7 @@ public class WintertodtCornerTrackerTest
 
     @Test public void traceKeepsEarnedAndCarriedSeparateAndLabelsPlannerHonestly()
     {
-        WintertodtSnapshot snapshot = WintertodtSnapshot.builder().observationTick(10).points(400)
+        WintertodtSnapshot snapshot = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).observationTick(10).points(400)
             .brumaRoots(3).brumaKindling(2).workingCorner(WorkingCorner.SOUTHWEST)
             .corners(tracker.observe(10, objects, npcs)).build();
         WintertodtObjective objective = new WintertodtObjective(ObjectiveType.LIGHT, "Relight", "brazier_unlit",
@@ -108,5 +108,52 @@ public class WintertodtCornerTrackerTest
         assertTrue(trace.contains("earned=400 carried=80"));
         assertTrue(trace.contains("observedGlobalLit=-1"));
         assertTrue(trace.contains("NORTHEAST.brazier=UNKNOWN"));
+    }
+
+    @Test public void unchangedCachedHealthExpiresWhileStandingStateRemainsFresh()
+    {
+        NPC npc = mock(NPC.class); NPCComposition composition = mock(NPCComposition.class);
+        when(npc.getTransformedComposition()).thenReturn(composition);
+        when(composition.getId()).thenReturn(NpcID.WINT_WIZARD);
+        when(npc.getHealthRatio()).thenReturn(3); when(npc.getHealthScale()).thenReturn(4);
+        when(npcs.target(TargetKind.PYROMANCER, WorkingCorner.SOUTHWEST.location())).thenReturn(npc);
+        assertTrue(corner(tracker.observe(10, objects, npcs), WorkingCorner.SOUTHWEST).healthFresh(10));
+        for (int t = 11; t <= 19; t++) { tracker.observe(t, objects, npcs); }
+        CornerObservation stale = corner(tracker.observe(20, objects, npcs), WorkingCorner.SOUTHWEST);
+        assertEquals(-1, stale.getPyromancerHealthPercent()); assertFalse(stale.healthFresh(20));
+        assertTrue(stale.pyromancerFresh(20));
+        assertEquals(CornerObservation.PyromancerState.ALIVE, stale.getPyromancerState());
+        when(npc.getHealthRatio()).thenReturn(2);
+        CornerObservation updated = corner(tracker.observe(21, objects, npcs), WorkingCorner.SOUTHWEST);
+        assertEquals(50, updated.getPyromancerHealthPercent()); assertTrue(updated.healthFresh(21));
+    }
+    @Test public void replacingTheNpcOrLosingItsHealthDoesNotReusePreviousInjuryEvidence()
+    {
+        NPC npc = mock(NPC.class), replacement = mock(NPC.class); NPCComposition composition = mock(NPCComposition.class);
+        when(composition.getId()).thenReturn(NpcID.WINT_WIZARD);
+        for (NPC n : new NPC[]{npc, replacement})
+        {
+            when(n.getTransformedComposition()).thenReturn(composition);
+            when(n.getHealthRatio()).thenReturn(3); when(n.getHealthScale()).thenReturn(4);
+        }
+        when(npcs.target(TargetKind.PYROMANCER, WorkingCorner.SOUTHWEST.location())).thenReturn(npc);
+        tracker.observe(10, objects, npcs);
+        when(npcs.target(TargetKind.PYROMANCER, WorkingCorner.SOUTHWEST.location())).thenReturn(replacement);
+        assertEquals(20, corner(tracker.observe(20, objects, npcs), WorkingCorner.SOUTHWEST).getHealthObservedTick());
+        when(replacement.getHealthRatio()).thenReturn(-1);
+        CornerObservation missing = corner(tracker.observe(21, objects, npcs), WorkingCorner.SOUTHWEST);
+        assertEquals(-1, missing.getPyromancerHealthPercent()); assertFalse(missing.healthFresh(21));
+    }
+
+    @Test public void aSpentHealingDoseInvalidatesCachedInjuryUntilNewHealthEvidence()
+    {
+        NPC npc = mock(NPC.class); NPCComposition composition = mock(NPCComposition.class);
+        when(npc.getTransformedComposition()).thenReturn(composition); when(composition.getId()).thenReturn(NpcID.WINT_WIZARD);
+        when(npc.getHealthRatio()).thenReturn(2); when(npc.getHealthScale()).thenReturn(4);
+        when(npcs.target(TargetKind.PYROMANCER, WorkingCorner.SOUTHWEST.location())).thenReturn(npc);
+        tracker.observe(10, objects, npcs); tracker.invalidateHealth(WorkingCorner.SOUTHWEST);
+        assertFalse(corner(tracker.observe(11, objects, npcs), WorkingCorner.SOUTHWEST).healthFresh(11));
+        when(npc.getHealthRatio()).thenReturn(3);
+        assertTrue(corner(tracker.observe(12, objects, npcs), WorkingCorner.SOUTHWEST).healthFresh(12));
     }
 }

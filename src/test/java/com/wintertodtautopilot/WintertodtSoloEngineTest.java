@@ -9,7 +9,10 @@ import static org.junit.Assert.*;
 public class WintertodtSoloEngineTest
 {
     private final WintertodtSoloEngine engine = new WintertodtSoloEngine();
-    private PlannerSettings settings = PlannerSettings.from(new WintertodtAutopilotConfig() { });
+    // These legacy regression sequences exercise the former active healing/pair behavior explicitly.
+    private PlannerSettings settings = PlannerSettings.from(new WintertodtAutopilotConfig() {
+        @Override public SoloEffort soloEffort() { return SoloEffort.ACTIVE; }
+    });
     private int tick;
     private int energy = 100, points, roots, kindling, doses = 24, free = 20;
     private final java.util.Map<WorkingCorner, BrazierState> states = new java.util.EnumMap<>(WorkingCorner.class);
@@ -29,10 +32,10 @@ public class WintertodtSoloEngineTest
                 visible ? CornerObservation.Source.DIRECT_SCENE : CornerObservation.Source.NONE,
                 c == missing ? -1 : tick, visible ? tick : -1, visible && c != missing, visible));
         }
-        return WintertodtSnapshot.builder().observationTick(tick).roundState(RoundState.ACTIVE)
+        return WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).observationTick(tick).roundState(RoundState.ACTIVE)
             .wintertodtEnergy(energy).points(points).warmth(80).rawWarmth(800).brumaRoots(roots).brumaKindling(kindling)
             .rejuvenationDoses(doses).potionItem(ItemID.WINT_POTION4).warmthItem(ItemID.WINT_POTION4)
-            .freeSlots(free).hasAxe(true).hasHammer(true).hasKnife(true).hasTinderbox(true).canMixPotion(true)
+            .runEnergyPercent(100).freeSlots(free).hasAxe(true).hasHammer(true).hasKnife(true).hasTinderbox(true).canMixPotion(true)
             .workingCorner(WorkingCorner.SOUTHWEST).playerLocation(WorkingCorner.SOUTHWEST.location()).brazierDistance(0)
             .localBrazierState(states.getOrDefault(WorkingCorner.SOUTHWEST, BrazierState.UNLIT))
             .localPyromancerKnown(true).localPyromancerIncapacitated(down == WorkingCorner.SOUTHWEST).corners(corners).build();
@@ -184,7 +187,7 @@ public class WintertodtSoloEngineTest
         down = WorkingCorner.SOUTHWEST;
         assertEquals("supply_inventory_blocked", next().getReason()); // Cannot heal with zero doses.
         down = WorkingCorner.AUTOMATIC; energy = 9;
-        assertEquals("supply_inventory_blocked", next().getReason()); // Do not restart drain just to free space.
+        assertEquals("solo_recovery_space", next().getReason()); // Do not restart drain just to free space.
     }
     @Test public void noKnifeInXpModeAndTorchCanReplaceTinderbox()
     {

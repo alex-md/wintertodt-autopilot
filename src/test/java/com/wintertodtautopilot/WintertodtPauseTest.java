@@ -41,7 +41,7 @@ public class WintertodtPauseTest
         when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
         when(client.getLocalPlayer()).thenReturn(player);
         when(player.getWorldLocation()).thenReturn(new WorldPoint(1639, 3997, 0));
-        WintertodtSnapshot s = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).warmth(15)
+        WintertodtSnapshot s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).warmth(15)
             .warmthItem(1).points(100).workingCorner(WorkingCorner.SOUTHEAST).build();
         when(tracker.snapshot(any())).thenReturn(s);
         TrackerTestSupport.inject(plugin, "targetPoint", new WorldPoint(1638, 3997, 0));

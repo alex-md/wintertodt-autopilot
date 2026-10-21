@@ -46,6 +46,8 @@ public final class WintertodtDecisionEngine implements WintertodtPlanner
         }
         WintertodtObjective safety = WintertodtSafety.objective(s, settings);
         if (safety != null) { return safety; }
+        WintertodtObjective missing = WintertodtSafety.missingSupplies(s);
+        if (missing != null) { return missing; }
 
         if (!s.active())
         {

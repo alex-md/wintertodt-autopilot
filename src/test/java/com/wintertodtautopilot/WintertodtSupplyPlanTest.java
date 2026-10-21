@@ -7,7 +7,7 @@ public class WintertodtSupplyPlanTest
 {
     private WintertodtSnapshot.WintertodtSnapshotBuilder start()
     {
-        return WintertodtSnapshot.builder().roundState(RoundState.COUNTDOWN).warmth(100);
+        return WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.COUNTDOWN).warmth(100);
     }
     @Test public void higherFiremakingAndWarmClothingReduceReserve()
     {

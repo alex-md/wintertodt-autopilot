@@ -54,17 +54,17 @@ public class WintertodtBrazierHudTest
         when(objects.brazierAt(WorkingCorner.SOUTHWEST)).thenReturn(BrazierState.LIT);
         WintertodtCornerTracker tracker = new WintertodtCornerTracker();
         List<CornerObservation> first = tracker.observe(10, objects, npcs, client);
-        WintertodtSnapshot s = WintertodtSnapshot.builder().observationTick(10).corners(first).build();
+        WintertodtSnapshot s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).observationTick(10).corners(first).build();
         assertEquals(1, s.observedGlobalLitBraziers());
         assertEquals(CornerObservation.Source.HUD_WIDGET, s.corner(WorkingCorner.NORTHWEST).getBrazierSource());
         assertFalse(s.corner(WorkingCorner.NORTHWEST).isBrazierVisible());
         when(objects.brazierAt(WorkingCorner.SOUTHWEST)).thenReturn(BrazierState.UNLIT);
-        s = WintertodtSnapshot.builder().observationTick(11).corners(tracker.observe(11, objects, npcs, client)).build();
+        s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).observationTick(11).corners(tracker.observe(11, objects, npcs, client)).build();
         assertEquals(BrazierState.UNLIT, s.corner(WorkingCorner.SOUTHWEST).getBrazierState());
         assertEquals(BrazierState.UNKNOWN, s.corner(WorkingCorner.NORTHWEST).getBrazierState());
         assertEquals(-1, s.observedGlobalLitBraziers());
         when(client.getWidget(InterfaceID.WintStatus.BRAZIER1).getSpriteId()).thenReturn(1398);
-        s = WintertodtSnapshot.builder().observationTick(12).corners(tracker.observe(12, objects, npcs, client)).build();
+        s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).observationTick(12).corners(tracker.observe(12, objects, npcs, client)).build();
         assertEquals(0, s.observedGlobalLitBraziers());
     }
     @Test public void disappearingHudDoesNotReuseRemoteState()
@@ -74,7 +74,7 @@ public class WintertodtBrazierHudTest
         WintertodtNpcTracker npcs = mock(WintertodtNpcTracker.class);
         tracker.observe(10, objects, npcs, client);
         when(client.getWidget(InterfaceID.WintStatus.BRAZIER1)).thenReturn(null);
-        WintertodtSnapshot s = WintertodtSnapshot.builder().observationTick(11).corners(tracker.observe(11, objects, npcs, client)).build();
+        WintertodtSnapshot s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).observationTick(11).corners(tracker.observe(11, objects, npcs, client)).build();
         assertEquals(BrazierState.UNKNOWN, s.corner(WorkingCorner.NORTHWEST).getBrazierState());
         assertEquals(10, s.corner(WorkingCorner.NORTHWEST).getBrazierObservedTick());
         assertEquals(-1, s.observedGlobalLitBraziers());

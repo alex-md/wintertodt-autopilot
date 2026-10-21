@@ -16,7 +16,7 @@ public class WintertodtDecisionEngineTest
     }
     private WintertodtSnapshot.WintertodtSnapshotBuilder active()
     {
-        return WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).wintertodtEnergy(80).warmth(90).points(0)
+        return WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).wintertodtEnergy(80).warmth(90).points(0)
             .localBrazierState(BrazierState.LIT).localPyromancerKnown(true)
             .firemakingLevel(99).warmClothingCount(4).rejuvenationDoses(4).potionItem(ItemID.WINT_POTION4)
             .brazierDistance(0).hasHammer(true).hasKnife(true).hasTinderbox(true).hasAxe(true).freeSlots(24).workingCorner(WorkingCorner.SOUTHEAST);
@@ -33,9 +33,9 @@ public class WintertodtDecisionEngineTest
         WintertodtObjective result = decide(active().warmth(18));
         assertEquals(TargetKind.DOOR, result.getTarget()); assertTrue(result.isUrgent());
     }
-    @Test public void consumingClearsWarning()
+    @Test public void consumingCannotClearWarningBeforeWarmthRecovers()
     {
-        assertEquals(ObjectiveType.CHOP, decide(active().warmth(18).warmthItem(ItemID.CAKE)
+        assertEquals(ObjectiveType.RESTORE_WARMTH, decide(active().warmth(18).warmthItem(ItemID.CAKE)
             .currentActivity(PlayerActivity.RESTORING_WARMTH)).getType());
     }
     @Test public void brokenBrazierRequiresRepair()

@@ -9,7 +9,7 @@ public interface WintertodtAutopilotConfig extends Config
     String plan = "plan";
     @ConfigSection(name = "Mass settings", description = "Strategy and reward goal for mass worlds. Used only in Mass mode.", position = 1)
     String mass = "mass";
-    @ConfigSection(name = "Solo settings (experimental)", description = "Strategy, point goal and finishing controls. Used only in Solo mode.", position = 2, closedByDefault = true)
+    @ConfigSection(name = "Solo settings", description = "Strategy, point goal and finishing controls. Used only in Solo mode.", position = 2, closedByDefault = true)
     String solo = "solo";
     @ConfigSection(name = "Warmth", description = "Optional recovery thresholds. The defaults suit mass worlds.", position = 3, closedByDefault = true)
     String warmth = "warmth";
@@ -25,7 +25,7 @@ public interface WintertodtAutopilotConfig extends Config
     default boolean pauseGuidance() { return false; }
 
     @ConfigItem(position = -2, keyName = "mode", name = "Mode",
-        description = "Mass or experimental Solo guidance. Solo assumes you chose an empty world; it cannot guarantee exclusive control.", section = plan)
+        description = "Mass or Solo guidance. Solo assumes you chose an empty world; it cannot guarantee exclusive control.", section = plan)
     default WintertodtMode mode() { return WintertodtMode.MASS; }
 
     @ConfigItem(position = 0, keyName = "soloStrategy", name = "Solo strategy",
@@ -37,7 +37,11 @@ public interface WintertodtAutopilotConfig extends Config
     @Range(min = 500, max = 100000)
     default int soloPointGoal() { return 5000; }
 
-    @ConfigItem(position = 2, keyName = "finishSoloRound", name = "Finish this Solo round",
+    @ConfigItem(position = 2, keyName = "soloEffort", name = "Solo effort",
+        description = "Comfortable finishes batches, avoids optional healing and finishes with one brazier. Active Points adds observed healing opportunities; Active finishes with an adjacent pair when run energy is known and above 10%.", section = solo)
+    default SoloEffort soloEffort() { return SoloEffort.COMFORTABLE; }
+
+    @ConfigItem(position = 3, keyName = "finishSoloRound", name = "Finish this Solo round",
         description = "Finish the current Solo round early. Once requested, it stays active until the round ends, you change mode or hop worlds.", section = solo)
     default boolean finishSoloRound() { return false; }
 

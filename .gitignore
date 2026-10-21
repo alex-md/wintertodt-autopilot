@@ -28,3 +28,6 @@ build/
 .idea/
 *.iml
 !gradle/wrapper/gradle-wrapper.jar
+
+# macOS folder metadata
+.DS_Store

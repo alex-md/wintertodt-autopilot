@@ -15,7 +15,7 @@ public class WintertodtHighlightTest
                 TargetKind.PYROMANCER, 1, false, potion, ItemID.WINT_BRUMA_ROOT, ItemID.WINT_BRUMA_KINDLING, ItemID.WINT_VIAL);
             for (PlayerActivity activity : new PlayerActivity[]{PlayerActivity.IDLE, PlayerActivity.FEEDING, PlayerActivity.FLETCHING, PlayerActivity.HEALING})
             {
-                WintertodtSnapshot s = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+                WintertodtSnapshot s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE)
                     .brumaRoots(5).brumaKindling(5).currentActivity(activity).build();
                 assertFalse(WintertodtHighlight.inventoryItem(s, heal, potion));
                 assertFalse(WintertodtHighlight.inventoryItem(s, heal, ItemID.WINT_BRUMA_ROOT));
@@ -52,7 +52,7 @@ public class WintertodtHighlightTest
 
     @Test public void interruptionCuePersistsUntilResumingAndExcludesMovementAndWaiting()
     {
-        WintertodtSnapshot s = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).interrupted(true).build();
+        WintertodtSnapshot s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).interrupted(true).build();
         WintertodtObjective o = new WintertodtObjective(ObjectiveType.FLETCH, "Continue fletching", "batch_fletch", TargetKind.NONE, 12, false);
         assertTrue(WintertodtHighlight.needsRestart(s, o));
         assertFalse(WintertodtHighlight.needsRestart(s.toBuilder().currentActivity(PlayerActivity.FLETCHING).build(), o));
@@ -63,7 +63,7 @@ public class WintertodtHighlightTest
     }
     @Test public void extinguishedBrazierPulsesWithoutChatOrIdleDetection()
     {
-        WintertodtSnapshot s = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).currentActivity(PlayerActivity.FEEDING).build();
+        WintertodtSnapshot s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).currentActivity(PlayerActivity.FEEDING).build();
         WintertodtObjective light = new WintertodtObjective(ObjectiveType.LIGHT, "Relight", "brazier_unlit", TargetKind.BRAZIER, 0, false);
         assertTrue(WintertodtHighlight.needsAttention(s, light));
         float bright = WintertodtHighlight.strengthAt(s, light, true, 300_000_000L);
@@ -75,7 +75,7 @@ public class WintertodtHighlightTest
     }
     @Test public void warmthAndUrgentFeedDemandAttentionUntilTheirActionStarts()
     {
-        WintertodtSnapshot s = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).currentActivity(PlayerActivity.CHOPPING).build();
+        WintertodtSnapshot s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).currentActivity(PlayerActivity.CHOPPING).build();
         WintertodtObjective drink = new WintertodtObjective(ObjectiveType.RESTORE_WARMTH, "Drink", "warmth_low", TargetKind.NONE, 1, true);
         assertTrue(WintertodtHighlight.needsAttention(s, drink));
         assertTrue(WintertodtHighlight.needsAttention(s.toBuilder().currentActivity(PlayerActivity.MOVING).build(), drink));
@@ -87,7 +87,7 @@ public class WintertodtHighlightTest
 
     @Test public void blockedInventoryStillNeedsAttentionEvenWithoutSceneTarget()
     {
-        WintertodtSnapshot s = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).build();
+        WintertodtSnapshot s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).build();
         WintertodtObjective blocked = new WintertodtObjective(ObjectiveType.WAIT, "Make space", "inventory_blocked", TargetKind.NONE, 0, false);
         assertTrue(WintertodtHighlight.needsAttention(s, blocked));
         assertFalse(WintertodtHighlight.needsAttention(s, new WintertodtObjective(ObjectiveType.WAIT, "Wait", "countdown", TargetKind.NONE, 0, false)));
@@ -96,7 +96,7 @@ public class WintertodtHighlightTest
 
     @Test public void relightingHighlightsOnlyTheToolWhileTheBrazierPulses()
     {
-        WintertodtSnapshot feeding = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+        WintertodtSnapshot feeding = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE)
             .localBrazierState(BrazierState.LIT).brumaRoots(5).brumaKindling(4)
             .currentActivity(PlayerActivity.FEEDING).build();
         WintertodtObjective feed = new WintertodtObjective(ObjectiveType.FEED, "Feed", "batch_feed",
@@ -121,7 +121,7 @@ public class WintertodtHighlightTest
 
     @Test public void maintenanceAndWarmthHighlightOnlyTheirRelevantItems()
     {
-        WintertodtSnapshot stopped = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+        WintertodtSnapshot stopped = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE)
             .localBrazierState(BrazierState.BROKEN).brumaRoots(5).build();
         WintertodtObjective drink = new WintertodtObjective(ObjectiveType.RESTORE_WARMTH, "Drink", "warmth_low",
             TargetKind.NONE, 1, true, ItemID.WINT_POTION4);
@@ -136,7 +136,7 @@ public class WintertodtHighlightTest
 
     @Test public void fletchingDistinguishesRootsFromEitherKnifeAndSettlesWhenStarted()
     {
-        WintertodtSnapshot idle = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+        WintertodtSnapshot idle = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE)
             .brumaRoots(5).currentActivity(PlayerActivity.IDLE).build();
         WintertodtObjective fletch = new WintertodtObjective(ObjectiveType.FLETCH, "Fletch roots", "batch_fletch",
             TargetKind.NONE, 5, false, ItemID.KNIFE, ItemID.FLETCHING_KNIFE, ItemID.WINT_BRUMA_ROOT);
@@ -158,7 +158,7 @@ public class WintertodtHighlightTest
 
     @Test public void theSamePotionOnlyGetsAnInventoryCueForPersonalWarmth()
     {
-        WintertodtSnapshot full = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+        WintertodtSnapshot full = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE)
             .warmth(100).currentActivity(PlayerActivity.IDLE).build();
         WintertodtObjective heal = new WintertodtObjective(ObjectiveType.HEAL_PYROMANCER, "Heal the pyromancer",
             "solo_heal", TargetKind.PYROMANCER, 1, false, ItemID.WINT_POTION4);

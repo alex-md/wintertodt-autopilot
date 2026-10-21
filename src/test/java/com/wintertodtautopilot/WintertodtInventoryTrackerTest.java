@@ -11,6 +11,43 @@ import static org.mockito.Mockito.*;
 
 public class WintertodtInventoryTrackerTest
 {
+    @Test public void missingContainersRemainUnknownAndDoNotCreateEmptyBagCapacity() throws Exception
+    {
+        Client client = mock(Client.class);
+        WintertodtInventoryTracker tracker = new WintertodtInventoryTracker();
+        TrackerTestSupport.inject(tracker, "client", client);
+        WintertodtSnapshot.WintertodtSnapshotBuilder b = WintertodtSnapshot.builder();
+        tracker.fill(b);
+        assertFalse(b.build().isInventoryKnown()); assertFalse(b.build().isEquipmentKnown());
+        assertEquals(0, b.build().getFreeSlots());
+        assertFalse(tracker.changed());
+        ItemContainer bag = mock(ItemContainer.class), worn = mock(ItemContainer.class);
+        when(client.getItemContainer(InventoryID.INV)).thenReturn(bag);
+        when(client.getItemContainer(InventoryID.WORN)).thenReturn(worn);
+        when(bag.getItems()).thenReturn(new Item[0]); when(worn.getItems()).thenReturn(new Item[0]);
+        tracker.fill(b);
+        assertTrue(b.build().isInventoryKnown()); assertTrue(b.build().isEquipmentKnown());
+        assertEquals(28, b.build().getFreeSlots());
+    }
+
+    @Test public void quantityComparisonRecognizesPartialCakeAndDoesNotInventConsumptionAcrossMissingData() throws Exception
+    {
+        Client client = mock(Client.class);
+        ItemContainer bag = mock(ItemContainer.class);
+        WintertodtInventoryTracker tracker = new WintertodtInventoryTracker();
+        TrackerTestSupport.inject(tracker, "client", client);
+        when(client.getItemContainer(InventoryID.INV)).thenReturn(bag);
+        when(bag.getItems()).thenReturn(new Item[]{new Item(ItemID.CAKE, 1)});
+        tracker.changed();
+        assertFalse(tracker.quantityDecreased(ItemID.CAKE));
+        when(bag.getItems()).thenReturn(new Item[]{new Item(ItemID.PARTIAL_CAKE, 1)});
+        assertTrue(tracker.quantityDecreased(ItemID.CAKE));
+        when(client.getItemContainer(InventoryID.INV)).thenReturn(null);
+        assertFalse(tracker.quantityDecreased(ItemID.CAKE));
+        tracker.changed();
+        when(client.getItemContainer(InventoryID.INV)).thenReturn(bag);
+        assertFalse(tracker.quantityDecreased(ItemID.CAKE));
+    }
     @Test public void countsStacksEmptySlotsAndEquippedToolsAndFoodAtFullHp() throws Exception
     {
         Client client = mock(Client.class); ItemStatChanges stats = mock(ItemStatChanges.class);
@@ -32,7 +69,7 @@ public class WintertodtInventoryTrackerTest
         StatsChanges changes = new StatsChanges(1); StatChange change = new StatChange();
         change.setStat(Stats.HITPOINTS); change.setTheoretical(4); change.setRelative(0); changes.setStatChanges(new StatChange[]{change});
         when(effect.calculate(client)).thenReturn(changes);
-        WintertodtSnapshot.WintertodtSnapshotBuilder b = WintertodtSnapshot.builder(); tracker.fill(b);
+        WintertodtSnapshot.WintertodtSnapshotBuilder b = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true); tracker.fill(b);
         WintertodtSnapshot s = b.build();
         assertEquals(3, s.getBrumaRoots()); assertEquals(2, s.getBrumaKindling()); assertEquals(23, s.getFreeSlots());
         assertTrue(s.isHasKnife()); assertTrue(s.isHasHammer()); assertTrue(s.isHasBrumaTorch());
@@ -56,7 +93,7 @@ public class WintertodtInventoryTrackerTest
         when(client.getItemContainer(InventoryID.WORN)).thenReturn(worn);
         when(bag.getItems()).thenReturn(new Item[]{new Item(ItemID.FLETCHING_KNIFE, 1)});
         when(worn.getItems()).thenReturn(new Item[0]);
-        WintertodtSnapshot.WintertodtSnapshotBuilder b = WintertodtSnapshot.builder();
+        WintertodtSnapshot.WintertodtSnapshotBuilder b = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true);
         tracker.fill(b); assertTrue(b.build().isHasKnife()); assertTrue(b.build().isHasFletchingKnife());
         // Wielded in the off-hand it still speeds fletching, but an inventory knife is needed to start.
         when(bag.getItems()).thenReturn(new Item[0]);
@@ -77,7 +114,7 @@ public class WintertodtInventoryTrackerTest
         when(client.getItemContainer(InventoryID.INV)).thenReturn(bag);
         when(bag.getItems()).thenReturn(new Item[]{new Item(100000, 1)});
         when(worn.getItems()).thenReturn(new Item[]{new Item(100001, 1), new Item(100002, 1), new Item(100003, 1), new Item(100004, 1), new Item(100005, 1)});
-        WintertodtSnapshot.WintertodtSnapshotBuilder b = WintertodtSnapshot.builder();
+        WintertodtSnapshot.WintertodtSnapshotBuilder b = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true);
         tracker.fill(b); assertEquals(4, b.build().getWarmClothingCount());
         when(worn.getItems()).thenReturn(new Item[]{new Item(100001, 1), new Item(-1, 0)});
         tracker.fill(b); assertEquals(1, b.build().getWarmClothingCount());

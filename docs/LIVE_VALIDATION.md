@@ -1,6 +1,41 @@
 # Live Wintertodt validation
 
-Status: **in progress; final full validation pending**. Validate mass behavior before publishing. Experimental Solo requires the separate gates below. Run `./gradlew run`, enable the plugin's debug overlay, and perform all gameplay manually.
+Release: **0.3.0**, prepared 21 October 2026. The maintainer reports successful manual plugin testing and has chosen to remove the Solo preview label. The full scenario matrix below remains in progress; unchecked items have not been certified by automated tests. Run `./gradlew run`, enable the plugin's debug overlay, and perform all gameplay manually.
+
+## Phase 3 foundation — pending live evidence
+
+See [capture and replay instructions](PHASE_3_PROGRESS.md). These checks are separate from synthetic regression tests.
+
+- [ ] Capture a complete manual Solo loop, replay it with matching source, and compare decoded HUD/scene evidence with the game at all four corners and common scales.
+- [ ] Reload while recovering at 9%, 11% and 12% when safely practical. Recovery remains latched, fresh exit observations are required, and the partial batch resumes.
+- [ ] Reload mid-chop, fletch, feed and opening/finish travel. Destinations and work remain coherent; stale scene references never render.
+- [ ] Observe failed/delayed drinking: routine work cannot replace the warmth instruction before warmth recovers. Confirm potion and partial-food consumption; natural regeneration or healing a pyromancer must not masquerade as a personal sip.
+- [ ] Verify the brief “Warmth restored” transition between game ticks and normal continuation on the next game tick in both Mass and Solo.
+- [ ] Missing inventory/equipment/HUD data produces reassessment, not false missing-tool or empty-bag instructions. Reconnect with a missing/lower score cannot apply old finish intent to an unverified encounter.
+- [ ] Match recorded snow graphics to visible warnings/impacts; no hazard-avoidance behavior is claimed by this foundation.
+- [ ] Inspect debug-off/on overhead and log growth. Confirm capture failure does not affect guidance, and that no log records are uploaded automatically.
+
+## Phase 3 refinement pass — pending live evidence
+
+- [ ] Prepare six unfinished potions with sufficient space: collect all six herbs before Mix appears. Repeat with Brew'ma, partial potions, interrupted mixing and constrained inventory space; small batches must have an actual space constraint.
+- [ ] Carry unused full and partial reserves through completion/countdown into another round. No new potion trip occurs while the reserve remains usable. Below the strategy's restock threshold, only the real deficit is collected/mixed.
+- [ ] During opening travel Southeast → Northwest and Northeast → Southwest, let an intermediate brazier become unlit. Verify useful stops, stable approach/healing/repair guidance, and continuation to the original destination. Repeat with walking paths off.
+- [ ] Compare route costs and suggested order with actual collision geometry and the northern shortcut. Unknown or blocked approaches must not produce a false reachable route. Inspect overhead during movement as well as stationary work.
+- [ ] During recovery, pass other unlit fires: do not relight them. During finishing, pass an unselected third fire: keep the selected finish plan. Reach the earned goal mid-opening and confirm the opening circuit stops.
+- [ ] In Normal/Detailed, compare the strategic sentence with actual earned points, configured goal, energy and selected action. Manual finishing below the target must not claim the goal was earned. Routine work stays concise, Detailed does not repeat the same strategic sentence, and warmth warnings override the explanation.
+
+## Phase 3 effort and readiness — pending live evidence
+
+- [ ] Existing profiles default to Comfortable without losing strategy, point goal, corner, fletching choice or manual finish intent. Switching effort during a partial batch preserves its target.
+- [ ] Comfortable skips optional local/remote injury healing, still maintains an incapacitated working pyromancer when appropriate, and finishes with one stable fire. Active Points heals only fresh observed injuries during eligible work; Active XP avoids optional healing.
+- [ ] Active finishing uses only its selected adjacent pair with known run above 10%; unknown/low run maintains only the original anchor. Carry fuel through a manual finish request and confirm it is fed first. Warmth preempts all preferences.
+- [ ] Readiness distinguishes unknown containers, missing tools, potion preparation, inventory space and a usable partial reserve. Check Normal/Detailed and scaled layouts, including the warm-clothing advisory.
+- [ ] Compare observed personal/healing dose totals with manual actions. Dropping potions, food, natural regeneration and other players' healing must not count as personal sips. Observe at least three minutes before judging adaptive targets; verify bounded increases, latched preparation, fuel-first deferral, and calibration reset after clothing/strategy/effort changes.
+- [ ] Approach a highlighted pyromancer, click Help from a distance, and arrive beside it: keep the NPC outline while healing is pending, including after a failed request. A valid optional healing destination stays selected through walking and arrival; healed, stale or unsafe targets clear appropriately.
+- [ ] Failed/delayed Help clicks show bounded pending evidence and become actionable again. Confirm repair/light at the correct corner, partial feeding/fletching and between-round mixing. Loading, gaps and missing inventory cannot confirm an old request.
+- [ ] Keep a damaged standing pyromancer in view without a new health value. Injury expires while standing state remains known. After a healing dose, stale injury cannot trigger another optional heal; new damage refreshes evidence. Verify actual NPC menu indices and transformed objects.
+- [ ] At low energy and after a recovery reload, test lighting, downed-pyro healing and full-fuel-bag potion space. No path may restore drain during recovery. Unknown coverage blocks relights even during finishing. An already lit fire may accept fuel; otherwise request manual inventory space.
+- [ ] Compare Mass warmth, healing cues and inventory/action tracking with the previous release. Capture and replay both preferences with controller revision `phase3-healing-cues-4`; record complete Points and XP rounds before graduation.
 
 ## Observation gate
 
@@ -112,7 +147,7 @@ Do not mark these checks complete from unit tests. Solo energy stabilization rem
 
 ## Phase 2 observation trace gate
 
-The observation pipeline supports Mass and experimental Solo. Collect initial Solo traces using your own gameplay decisions before following experimental guidance.
+The observation pipeline supports Mass and Solo. Compare recorded observations with the game during manual play.
 
 - [ ] Launch with `./gradlew run`, enable **Debug overlay and logs**, and locate `solo_observation_v1` lines in the RuneLite debug log. Disable debug and verify tick traces stop.
 - [ ] Visit all four corners and the safe preparation area. Compare corner names, brazier states and pyromancer states with scene entities; compare health percentages only when a health bar is visible.
@@ -173,7 +208,7 @@ The observation pipeline supports Mass and experimental Solo. Collect initial So
 
 ## Update notice
 
-- [ ] With no 0.2.1 notice marker saved, log in anywhere: one short update message appears in the chatbox. It also appears when enabling the plugin while already logged in and when gameplay guidance is paused.
+- [ ] With no 0.3.0 notice marker saved, or an older marker such as 0.2.1, log in anywhere: one short Solo-ready update message appears in the chatbox. It also appears when enabling the plugin while already logged in and when gameplay guidance is paused.
 - [ ] Wait several ticks, hop, log out/in and restart RuneLite: the message does not repeat in that RuneLite profile. A separate profile receives its own notice.
 
 
@@ -182,7 +217,7 @@ The observation pipeline supports Mass and experimental Solo. Collect initial So
 - [ ] Relight with roots and kindling held: the brazier pulses, the lighting tool is highlighted, and fuel has no inventory cue.
 - [ ] Start fletching with either knife: the knife is amber and roots are softer gold; both cues settle while fletching.
 - [ ] Check diagonal routes across open ground and around blocked corners in all four arena corners, including Solo gap approaches.
-- [ ] Updating from 0.2.1 with its notice marker saved does not display another release notice.
+- [ ] After the 0.3.0 notice has been saved, later logins and restarts do not repeat it. Older markers still receive the new Solo-ready notice once.
 
 ## 0.2.3 highlight controls and healing
 

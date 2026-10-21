@@ -31,7 +31,7 @@ public class WintertodtActiveCueTest
             for (int i = 0; i < types.length; i++)
             {
                 when(plugin.getObjective()).thenReturn(new WintertodtObjective(types[i], "Action", "batch", TargetKind.ROOTS, 1, false, net.runelite.api.gameval.ItemID.WINT_BRUMA_ROOT));
-                when(plugin.getSnapshot()).thenReturn(WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+                when(plugin.getSnapshot()).thenReturn(WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE)
                     .currentActivity(activities[i]).build());
                 assertNull(scene.render(graphics));
                 inventory.renderItemOverlay(graphics, net.runelite.api.gameval.ItemID.WINT_BRUMA_ROOT, item);
@@ -66,7 +66,7 @@ public class WintertodtActiveCueTest
         when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
         when(client.getLocalPlayer()).thenReturn(player);
         when(player.getWorldLocation()).thenReturn(location);
-        WintertodtSnapshot working = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+        WintertodtSnapshot working = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE)
             .wintertodtEnergy(80).warmth(90).points(0).playerLocation(location)
             .hasAxe(true).hasHammer(true).hasKnife(true).hasTinderbox(true)
             .firemakingLevel(99).warmClothingCount(4).rejuvenationDoses(12).freeSlots(20)

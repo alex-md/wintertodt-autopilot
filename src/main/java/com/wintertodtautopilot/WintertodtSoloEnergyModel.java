@@ -23,13 +23,18 @@ final class WintertodtSoloEnergyModel
         samples.clear(); lastTick = -1; recoverySince = -1; consecutiveRecoveryExit = 0;
         recovering = false; trend = Trend.UNKNOWN; rapidDrop = false;
     }
+    /** Invalidate cadence without granting permission to leave an unfinished recovery. */
+    void suspend()
+    {
+        invalidateTrend(); lastTick = -1; recoverySince = -1;
+    }
     void observe(int tick, int energy)
     {
         if (tick < 0 || energy < 0 || energy > 100) { invalidateTrend(); return; }
         if (tick <= lastTick)
         {
             if (tick == lastTick) { return; }
-            reset();
+            suspend();
         }
         if (lastTick >= 0 && tick - lastTick > 2) { invalidateTrend(); consecutiveRecoveryExit = 0; }
         lastTick = tick;
@@ -56,6 +61,7 @@ final class WintertodtSoloEnergyModel
         { recovering = true; recoverySince = tick; consecutiveRecoveryExit = 0; }
         if (recovering)
         {
+            if (recoverySince < 0) { recoverySince = tick; }
             consecutiveRecoveryExit = energy >= RECOVERY_EXIT ? consecutiveRecoveryExit + 1 : 0;
             if (consecutiveRecoveryExit >= 3 && tick - recoverySince >= 3)
             { recovering = false; recoverySince = -1; consecutiveRecoveryExit = 0; }

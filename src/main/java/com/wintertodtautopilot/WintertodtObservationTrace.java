@@ -24,13 +24,26 @@ final class WintertodtObservationTrace
             .append(" destination=").append(destination(s, objective))
             .append(" action=").append(objective.getType()).append(" reason=").append(objective.getReason())
             .append(" activity=").append(s.getCurrentActivity())
+            .append(" actionState=").append(s.getActionState()).append(" actionActivity=").append(s.getActionActivity())
+            .append(" actionCorner=").append(s.getActionCorner())
+            .append(" personalDosesUsed=").append(s.getPersonalDosesUsed()).append(" healingDosesUsed=").append(s.getHealingDosesUsed())
+            .append(" warmthAction=").append(s.getWarmthAction())
+            .append(" inventoryKnown=").append(s.isInventoryKnown()).append(" equipmentKnown=").append(s.isEquipmentKnown())
             .append(" doses=").append(s.getRejuvenationDoses())
             .append(" unfinished=").append(s.getUnfinishedPotionCount()).append(" herbs=").append(s.getBrumaHerbCount())
             .append(" freeSlots=").append(s.getFreeSlots()).append(" runEnergy=").append(s.getRunEnergyPercent())
             .append(" earned=").append(s.getPoints()).append(" carried=").append(s.inventoryPoints())
             .append(" roots=").append(s.getBrumaRoots()).append(" kindling=").append(s.getBrumaKindling())
             .append(" loadedLit=").append(s.getLitBraziers())
-            .append(" observedGlobalLit=").append(s.observedGlobalLitBraziers());
+            .append(" observedGlobalLit=").append(s.observedGlobalLitBraziers())
+            .append(" observedFunctional=").append(s.observedFunctionalBraziers());
+        SoloAdvice advice = objective.getSoloAdvice();
+        trace.append(" advice=").append(advice == null ? "NONE" : advice.getReason().name());
+        if (advice != null)
+        {
+            trace.append(" adviceGoal=").append(advice.getPointGoal())
+                .append(" deferredDestination=").append(advice.getDeferredDestination().name());
+        }
         for (CornerObservation c : s.getCorners())
         {
             String prefix = " " + c.getCorner().name() + ".";
@@ -41,6 +54,8 @@ final class WintertodtObservationTrace
                 .append(prefix).append("brazierFresh=").append(c.brazierFresh(s.getObservationTick()))
                 .append(prefix).append("pyromancer=").append(c.getPyromancerState())
                 .append(prefix).append("healthPercent=").append(c.getPyromancerHealthPercent())
+                .append(prefix).append("healthTick=").append(c.getHealthObservedTick())
+                .append(prefix).append("healthFresh=").append(c.healthFresh(s.getObservationTick()))
                 .append(prefix).append("pyromancerSource=").append(c.getPyromancerSource())
                 .append(prefix).append("pyromancerVisible=").append(c.isPyromancerVisible())
                 .append(prefix).append("pyromancerTick=").append(c.getPyromancerObservedTick())

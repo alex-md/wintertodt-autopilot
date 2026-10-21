@@ -56,7 +56,7 @@ Scene references are cached via spawn/despawn and NPC change events. One scene b
 
 Automated scenario tests exercise the independent planner and mocked observation signals. A RuneLite 1.13.1 developer-client smoke launch reached the login screen, and RuneLite logged `WintertodtAutopilotPlugin is now running` with its event handlers registered. No game login, movement or interactions were performed. The upstream client logged a non-fatal Java 17 `ReflectUtil` annotation-cache diagnostic while continuing initialization.
 
-Live minigame validation has not been performed. The accompanying checklist records that release gate explicitly.
+This original research pass did not perform live minigame validation. For the current 0.3.0 release decision, reported maintainer testing and outstanding scenario checks, see [Phase 3 progress](PHASE_3_PROGRESS.md) and the [live checklist](LIVE_VALIDATION.md).
 
 ## Mid-round entry correction
 

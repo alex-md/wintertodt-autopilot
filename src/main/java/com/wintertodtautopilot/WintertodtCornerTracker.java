@@ -10,9 +10,16 @@ import net.runelite.api.NPC;
 public final class WintertodtCornerTracker
 {
     private final EnumMap<WorkingCorner, CornerObservation> previous = new EnumMap<>(WorkingCorner.class);
+    private final java.util.Map<WorkingCorner, NPC> healthActors = new EnumMap<>(WorkingCorner.class);
+    private final java.util.Map<WorkingCorner, Integer> healthRatios = new EnumMap<>(WorkingCorner.class);
+    private final java.util.Map<WorkingCorner, Integer> healthScales = new EnumMap<>(WorkingCorner.class);
+    private final java.util.Map<WorkingCorner, Integer> healthTicks = new EnumMap<>(WorkingCorner.class);
     private int lastTick = -1;
 
-    public void reset() { previous.clear(); lastTick = -1; }
+    public void reset() { previous.clear(); healthActors.clear(); healthRatios.clear(); healthScales.clear(); healthTicks.clear(); lastTick = -1; }
+
+    /** A spent healing dose invalidates the cached injury until the API value changes again. */
+    public void invalidateHealth(WorkingCorner corner) { healthTicks.put(corner, -1); }
 
     public List<CornerObservation> observe(int tick, WintertodtObjectTracker objects, WintertodtNpcTracker npcs)
     {
@@ -63,13 +70,27 @@ public final class WintertodtCornerTracker
             {
                 health = npc.getHealthRatio() * 100 / npc.getHealthScale();
             }
+            // Actor visibility is not a new health update. Unchanged cached ratios expire.
+            int healthTick = -1;
+            if (health >= 0)
+            {
+                if (healthActors.get(corner) != npc || !java.util.Objects.equals(healthRatios.get(corner), npc.getHealthRatio())
+                    || !java.util.Objects.equals(healthScales.get(corner), npc.getHealthScale())
+                    || old == null || old.getPyromancerState() != pyro)
+                { healthTicks.put(corner, tick); }
+                healthActors.put(corner, npc); healthRatios.put(corner, npc.getHealthRatio()); healthScales.put(corner, npc.getHealthScale());
+                healthTick = pyro == CornerObservation.PyromancerState.INCAPACITATED ? tick : healthTicks.getOrDefault(corner, -1);
+                if (healthTick < 0 || tick - healthTick > CornerObservation.STALE_AFTER_TICKS) { health = -1; }
+            }
+            else
+            { healthActors.remove(corner); healthRatios.remove(corner); healthScales.remove(corner); healthTicks.remove(corner); }
             CornerObservation observation = new CornerObservation(corner,
                 brazierKnown ? brazier : BrazierState.UNKNOWN, pyro, health,
                 source,
                 pyroVisible ? CornerObservation.Source.DIRECT_SCENE : CornerObservation.Source.NONE,
                 brazierKnown ? tick : old == null ? -1 : old.getBrazierObservedTick(),
                 pyroVisible ? tick : old == null ? -1 : old.getPyromancerObservedTick(),
-                brazierVisible, pyroVisible);
+                brazierVisible, pyroVisible, healthTick);
             previous.put(corner, observation);
             result.add(observation);
         }

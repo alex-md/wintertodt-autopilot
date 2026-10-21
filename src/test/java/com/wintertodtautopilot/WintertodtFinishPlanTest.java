@@ -7,7 +7,7 @@ public class WintertodtFinishPlanTest
 {
     private static WintertodtSnapshot.WintertodtSnapshotBuilder timed(int budget)
     {
-        return WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).brazierDistance(0).roundBudgetSeconds(budget);
+        return WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).brazierDistance(0).roundBudgetSeconds(budget);
     }
 
     @Test public void fletchingKnifeFitsMoreFletchesBeforeTheRoundEnds()

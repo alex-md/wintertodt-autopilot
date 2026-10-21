@@ -28,7 +28,7 @@ public class WintertodtRoundTrackerTest
         when(energy.getText()).thenReturn("Wintertodt's Energy: " + e + "%");
         when(points.getText()).thenReturn("Points: " + p);
         when(client.getVarbitValue(VarbitID.WINT_TRANSMIT_RESPAWNDELAY)).thenReturn(delay);
-        WintertodtSnapshot.WintertodtSnapshotBuilder b = WintertodtSnapshot.builder();
+        WintertodtSnapshot.WintertodtSnapshotBuilder b = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true);
         tracker.fill(b, true, 4); return b.build();
     }
     @Test public void readsCurrentWidgetAndTimerSources()
@@ -49,7 +49,7 @@ public class WintertodtRoundTrackerTest
     @Test public void missingWidgetIsUnknownRatherThanZero()
     {
         when(client.getWidget(InterfaceID.WintStatus.ENERGY)).thenReturn(null);
-        WintertodtSnapshot.WintertodtSnapshotBuilder b = WintertodtSnapshot.builder();
+        WintertodtSnapshot.WintertodtSnapshotBuilder b = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true);
         tracker.fill(b, true, 0);
         assertEquals(-1, b.build().getWintertodtEnergy()); assertFalse(b.build().active());
     }
@@ -74,7 +74,7 @@ public class WintertodtRoundTrackerTest
         when(title.isHidden()).thenReturn(true);
         when(energy.isHidden()).thenReturn(true);
         when(energy.getText()).thenReturn("Wintertodt's Energy: 70%");
-        WintertodtSnapshot.WintertodtSnapshotBuilder b = WintertodtSnapshot.builder();
+        WintertodtSnapshot.WintertodtSnapshotBuilder b = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true);
         tracker.fill(b, false, 0);
         assertEquals(-1, b.build().getWintertodtEnergy());
         assertEquals(RoundState.LOBBY, b.build().getRoundState());

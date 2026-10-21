@@ -10,19 +10,19 @@ Instructions stay in one movable panel. The highlighted target shows where to cl
 
 You still do every click. The plugin doesn't play for you.
 
-## Latest update — 0.2.5
+## Latest update — 0.3.0
 
-Solo finishes chopping batches before returning for repairs, relighting or optional healing. Feeding continues through the remaining fuel instead of restarting chopping after the first item. Mass chopping also survives brief animation gaps.
+Solo mode is ready. Choose **Comfortable** for fewer task changes and a one-brazier finish, or **Active** for extra healing in Points mode and an adjacent-pair finish when run energy allows.
 
-Routine Solo potion trips wait until carried fuel is fed, unless only one dose remains. Enabling mid-round accepts a usable partial reserve.
+Potion prep collects a useful batch before mixing. Supplies carry into the next round, and the working reserve can grow with your observed potion use. Recovery and unfinished fuel batches survive scene loading. Healing highlights stay on the pyromancer while you approach and wait for the result.
 
-Healing highlights the pyromancer, with no inventory potion border. Potion highlights mean drinking for your own warmth. Borders stay thin and subtle, with the existing width setting and fading pulse. Full warmth never prompts drinking, and recovered warmth clears an obsolete drink instruction between game ticks.
+Existing settings carry over. You'll get one short chat message about this update the next time you log in with the plugin enabled.
 
 ## Get started
 
 1. Install **Wintertodt Autopilot** from RuneLite's Plugin Hub.
-2. Join a Wintertodt mass world.
-3. Leave the strategy on **Mass - Balanced**, with fletching and working brazier on **Automatic**.
+2. Join a Wintertodt mass world, or choose an empty world for Solo.
+3. Choose **Mass** or **Solo** in settings. For Mass, start with **Mass - Balanced**. Leave fletching and working brazier on **Automatic**.
 4. Follow the instruction and highlighted target. Missing tools or potions? It'll walk you through getting them.
 
 All options are in RuneLite settings → **Wintertodt Autopilot**. Mass and Solo each have their own settings section; mode, working brazier and fletching preferences are shared. No extra sidebar. Walking paths and floor markers are off by default. Right-click the overlay to open settings, or hold **Alt** to move it.
@@ -49,22 +49,26 @@ Enable **Notify reward secured** for a one-time alert when earned points cross 5
 
 Automatic fletching follows your strategy. You can override it in settings. Once you reach a fixed reward goal, guidance keeps working toward the next 500-point threshold.
 
-## Solo mode (experimental)
+## Solo mode
 
-Solo is new and still needs testing in game. Expect rough edges. Start on an empty world and keep an eye on the energy and your supplies.
+Start on an empty world and pick the points goal you want to finish at. Keep an eye on the energy and your supplies.
 
-1. Set **Mode** to **Solo (experimental)**.
+1. Set **Mode** to **Solo**.
 2. Pick **Solo strategy**: **Points / Rewards** for kindling, or **Firemaking XP** for roots.
 3. Set your **Solo point goal**. The default is **5,000**. Fuel in your inventory only counts once you've fed it.
 4. Leave **Working brazier** on **Automatic** to work near your current corner, or pick a specific brazier to stay there.
 
 The plugin helps light the opening braziers, lower the energy, then keep the round going while you earn points. When energy gets low, it'll tell you to leave braziers unlit so it can recover. Once you've earned your goal, it'll guide you through finishing the round.
 
+**Solo effort** defaults to **Comfortable**: finish batches, skip optional healing, and finish with one brazier. **Active** adds fresh injury-healing opportunities in Points mode and finishes with an adjacent pair when you have more than 10% known run energy. XP still avoids optional healing. Changing effort keeps your strategy, goal and current fuel batch.
+
+Supply readiness appears during preparation. Detailed shows the working potion allowance and observed personal/healing use. The reserve starts at 24 doses and can increase with sustained confirmed consumption; it does not guarantee supplies for a whole round. Failed healing clicks expire, and old health-bar readings cannot keep triggering optional healing. [Phase 3 behavior and validation notes](docs/PHASE_3_EFFORT_AND_READINESS.md).
+
 Want to end it early? Enable **Finish this Solo round**. Once requested, it stays active for that round, even if you uncheck it. It clears when the round ends, you change mode, hop worlds or log out.
 
 If you turn on **Show walking path**, Solo routes can use the northern gap between the back two braziers at **60 Agility**, when it's quicker than walking around. You still need to click each jump yourself. Below 60, the line takes the walking route.
 
-Solo hasn't passed the full [live validation checklist](docs/LIVE_VALIDATION.md) yet. [Solo notes](docs/SOLO_MODE_RESEARCH.md) cover the current behavior and what still needs checking.
+[Solo notes](docs/SOLO_MODE_RESEARCH.md) explain the controller and supply loop. The [validation checklist](docs/LIVE_VALIDATION.md) records the wider test matrix and remaining follow-up checks.
 
 ## Keep in mind
 

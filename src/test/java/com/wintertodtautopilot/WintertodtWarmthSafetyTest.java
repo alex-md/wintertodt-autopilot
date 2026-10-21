@@ -16,7 +16,7 @@ public class WintertodtWarmthSafetyTest
         {
             PlannerSettings settings = new PlannerSettings(WintertodtStrategy.MASS_POINTS,
                 PointGoal.MINIMUM_500, FletchMode.AUTOMATIC, threshold, threshold);
-            WintertodtSnapshot full = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+            WintertodtSnapshot full = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE)
                 .warmth(100).rawWarmth(1000).warmthItem(ItemID.WINT_POTION4).build();
             assertNull(WintertodtSafety.objective(full, settings));
             assertNull(WintertodtSafety.objective(full.toBuilder().warmthItem(-1).build(), settings));
@@ -29,7 +29,7 @@ public class WintertodtWarmthSafetyTest
             @Override public int restoreWarmth() { return 100; }
             @Override public int emergencyWarmth() { return 100; }
         };
-        WintertodtSnapshot full = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).warmth(100).build();
+        WintertodtSnapshot full = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).warmth(100).build();
         WintertodtObjective chop = new WintertodtObjective(ObjectiveType.CHOP, "Chop", "batch_chop", TargetKind.ROOTS, 6, false);
         assertNull(new WintertodtAttentionTracker().notification(full, chop, config, 10));
     }
@@ -53,7 +53,7 @@ public class WintertodtWarmthSafetyTest
             when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
             when(client.getLocalPlayer()).thenReturn(player);
             when(player.getWorldLocation()).thenReturn(WorkingCorner.SOUTHWEST.location());
-            WintertodtSnapshot cold = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+            WintertodtSnapshot cold = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE)
                 .observationTick(10).wintertodtEnergy(28).points(0).warmth(20).rawWarmth(200)
                 .warmthItem(ItemID.WINT_POTION4).potionItem(ItemID.WINT_POTION4).rejuvenationDoses(24)
                 .hasAxe(true).hasHammer(true).hasKnife(true).hasTinderbox(true).freeSlots(20)
@@ -68,11 +68,15 @@ public class WintertodtWarmthSafetyTest
             plugin.onClientTick(new ClientTick());
             assertSame(drink, plugin.getObjective()); // Invalid data cannot invent recovery.
             when(client.getVarbitValue(VarbitID.WINT_WARMTH)).thenReturn(1000);
+            java.lang.reflect.Field soloField = WintertodtAutopilotPlugin.class.getDeclaredField("solo");
+            soloField.setAccessible(true);
+            com.google.gson.JsonElement before = WintertodtSoloCapture.checkpoint((WintertodtSoloEngine) soloField.get(plugin));
             plugin.onClientTick(new ClientTick());
             assertEquals(100, plugin.getSnapshot().getWarmth());
             assertNotEquals(ObjectiveType.RESTORE_WARMTH, plugin.getObjective().getType());
             assertFalse(WintertodtHighlight.inventoryItem(plugin.getSnapshot(), plugin.getObjective(), ItemID.WINT_POTION4));
             assertEquals(10, plugin.getSnapshot().getObservationTick()); // No extra game tick was manufactured.
+            assertEquals(before, WintertodtSoloCapture.checkpoint((WintertodtSoloEngine) soloField.get(plugin)));
             WintertodtObjective resumed = plugin.getObjective();
             plugin.onClientTick(new ClientTick());
             assertSame(resumed, plugin.getObjective());

@@ -73,9 +73,15 @@ public class WintertodtOverlay extends OverlayPanel
             }
             else if (!s.active()) { body(WintertodtGuidance.phase(s)); }
         }
+        if (soloMode && config.overlayDetail() != OverlayDetail.MINIMAL
+            && (!s.active() || WintertodtGuidance.isSupplyTarget(o) || "supply_inventory_blocked".equals(o.getReason())
+                || "solo_recovery_space".equals(o.getReason()) || config.overlayDetail() == OverlayDetail.DETAILED))
+        { body(plugin.getSoloReadiness()); }
         if (config.overlayDetail() == OverlayDetail.DETAILED || config.debug())
         {
-            body(WintertodtGuidance.explanation(o));
+            if (o.getSoloAdvice() == null || config.overlayDetail() == OverlayDetail.MINIMAL)
+            { body(WintertodtGuidance.explanation(o)); }
+            if (soloMode) { body(plugin.getSoloReserveDetail()); }
             line("Potion doses / reserve", s.getRejuvenationDoses() + " / " + plugin.getPotionTargetDoses(), Color.WHITE);
             line("Roots / kindling", s.getBrumaRoots() + " / " + s.getBrumaKindling(), Color.WHITE);
             if (!soloMode) { line("Usable time budget", s.getRoundBudgetSeconds() < 0 ? "Unknown" : s.getRoundBudgetSeconds() + "s", Color.LIGHT_GRAY); }
@@ -84,7 +90,9 @@ public class WintertodtOverlay extends OverlayPanel
             line("Potential if fletched", s.getPoints() < 0 ? "Unknown" : Integer.toString(s.getPoints() + s.potentialPointsIfFletched()), Color.WHITE);
             line("Need for goal", s.getPoints() < 0 ? "Unknown" : Integer.toString(Math.max(0, target - s.getPoints())), Color.WHITE);
             line("Brazier", s.getLocalBrazierState().toString(), Color.WHITE);
-            line("Pyromancer", !s.isLocalPyromancerKnown() ? "Unknown" : s.isLocalPyromancerIncapacitated() ? "Incapacitated" : "Healthy", Color.WHITE);
+            line("Pyromancer", !s.isLocalPyromancerKnown() ? "Unknown" : s.isLocalPyromancerIncapacitated() ? "Incapacitated" : "Standing", Color.WHITE);
+            if (soloMode) { line("Effort", config.soloEffort().toString(), Color.WHITE); }
+            line("Action evidence", s.getActionState().toString().replace('_', ' '), Color.LIGHT_GRAY);
             line("Activity", s.getCurrentActivity().toString(), Color.WHITE);
             line("Firemaking / warm items", s.getFiremakingLevel() + " / " + (s.getWarmClothingCount() < 0 ? "Unknown" : s.getWarmClothingCount()), Color.WHITE);
             if (soloMode) { line("Run energy", percent(s.getRunEnergyPercent()), Color.WHITE); }
@@ -120,6 +128,7 @@ public class WintertodtOverlay extends OverlayPanel
         if (o.getType() == ObjectiveType.RESTORE_WARMTH) { return o.isUrgent() ? Color.RED : Color.ORANGE; }
         if (o.isUrgent()) { return Color.ORANGE; }
         if (WintertodtGuidance.isSupplyTarget(o)) { return SUPPLY_FLAME; }
+        if ("solo_healing_pending".equals(o.getReason())) { return FLAME; }
         if (!o.actionable()) { return new Color(130, 200, 150); }
         return FLAME;
     }

@@ -5,7 +5,7 @@ import static org.junit.Assert.*;
 
 public class WintertodtGuidanceTest
 {
-    private final WintertodtSnapshot active = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).build();
+    private final WintertodtSnapshot active = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).build();
     private final WintertodtObjective fletch = new WintertodtObjective(ObjectiveType.FLETCH,
         "Fletch 12 roots", "batch_fletch", TargetKind.NONE, 12, false);
 

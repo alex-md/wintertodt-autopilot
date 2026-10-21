@@ -11,7 +11,7 @@ public class WintertodtAttentionTrackerTest
     {
         WintertodtAttentionTracker tracker = new WintertodtAttentionTracker();
         WintertodtAutopilotConfig config = new WintertodtAutopilotConfig() { };
-        WintertodtSnapshot low = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).warmth(18).warmthItem(ItemID.CAKE).build();
+        WintertodtSnapshot low = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).warmth(18).warmthItem(ItemID.CAKE).build();
         assertNotNull(tracker.notification(low, feed, config, 100));
         assertNull(tracker.notification(low, feed, config, 200));
         assertNull(tracker.notification(low.toBuilder().warmth(80).build(), feed, config, 201));
@@ -24,7 +24,7 @@ public class WintertodtAttentionTrackerTest
     {
         WintertodtAttentionTracker tracker = new WintertodtAttentionTracker();
         WintertodtAutopilotConfig config = new WintertodtAutopilotConfig() { @Override public boolean notifyIdle() { return true; } };
-        WintertodtSnapshot idle = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).warmth(80).playerIdle(true).inactiveTicks(9).build();
+        WintertodtSnapshot idle = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).warmth(80).playerIdle(true).inactiveTicks(9).build();
         assertNull(tracker.notification(idle, feed, config, 100));
         idle = idle.toBuilder().inactiveTicks(10).build();
         assertNotNull(tracker.notification(idle, feed, config, 101));
@@ -35,7 +35,7 @@ public class WintertodtAttentionTrackerTest
     @Test public void waitDoesNotNotifyAndConsumedWarmthClearsAlert()
     {
         WintertodtAttentionTracker tracker = new WintertodtAttentionTracker();
-        WintertodtSnapshot s = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).warmth(18)
+        WintertodtSnapshot s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).warmth(18)
             .currentActivity(PlayerActivity.RESTORING_WARMTH).build();
         assertNull(tracker.notification(s, feed, new WintertodtAutopilotConfig() { }, 100));
     }
@@ -43,7 +43,7 @@ public class WintertodtAttentionTrackerTest
     {
         WintertodtAttentionTracker tracker = new WintertodtAttentionTracker();
         WintertodtAutopilotConfig config = new WintertodtAutopilotConfig() { @Override public boolean notifyRoundStart() { return true; } };
-        WintertodtSnapshot s = WintertodtSnapshot.builder().roundState(RoundState.COUNTDOWN).secondsToStart(5).build();
+        WintertodtSnapshot s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.COUNTDOWN).secondsToStart(5).build();
         assertNotNull(tracker.notification(s, feed, config, 100));
         assertNull(tracker.notification(s, feed, config, 200));
         tracker.notification(s.toBuilder().roundState(RoundState.ACTIVE).warmth(90).build(), feed, config, 201);
@@ -56,7 +56,7 @@ public class WintertodtAttentionTrackerTest
             @Override public boolean notifyIdle() { return true; }
             @Override public boolean notifyRoundStart() { return true; }
         };
-        WintertodtSnapshot idle = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+        WintertodtSnapshot idle = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE)
             .warmth(80).playerIdle(true).inactiveTicks(10).build();
         assertEquals("Wintertodt: Feed the brazier", tracker.notification(idle, feed, config, 100));
         assertEquals("Wintertodt: low warmth - restore now",
@@ -71,7 +71,7 @@ public class WintertodtAttentionTrackerTest
         WintertodtAutopilotConfig config = new WintertodtAutopilotConfig() {
             @Override public boolean notifyIdle() { return true; }
         };
-        WintertodtSnapshot idle = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE)
+        WintertodtSnapshot idle = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE)
             .warmth(18).playerIdle(true).inactiveTicks(10).build();
         assertEquals("Wintertodt: low warmth - restore now", tracker.notification(idle, feed, config, 100));
         assertEquals("Wintertodt: Feed the brazier", tracker.notification(idle.toBuilder().warmth(80).build(), feed, config, 101));
@@ -81,7 +81,7 @@ public class WintertodtAttentionTrackerTest
     {
         WintertodtAttentionTracker tracker = new WintertodtAttentionTracker();
         WintertodtAutopilotConfig config = rewards();
-        WintertodtSnapshot s = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).warmth(80).points(490)
+        WintertodtSnapshot s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).warmth(80).points(490)
             .brumaKindling(20).build();
         assertNull(tracker.notification(s, feed, config, 100)); // Carried fuel cannot secure a reward.
         assertEquals("Wintertodt: 500 points secured - reward minimum reached",
@@ -95,7 +95,7 @@ public class WintertodtAttentionTrackerTest
     @Test public void emergencyWinsAndRewardRemainsPendingUntilWarmthRecovers()
     {
         WintertodtAttentionTracker tracker = new WintertodtAttentionTracker();
-        WintertodtSnapshot s = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).warmth(80).points(490).build();
+        WintertodtSnapshot s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).warmth(80).points(490).build();
         tracker.notification(s, feed, rewards(), 100);
         s = s.toBuilder().points(500).warmth(18).build();
         assertEquals("Wintertodt: low warmth - restore now", tracker.notification(s, feed, rewards(), 101));
@@ -107,7 +107,7 @@ public class WintertodtAttentionTrackerTest
     @Test public void joiningOrReconnectingAboveThresholdDoesNotAnnounceAnOldReward()
     {
         WintertodtAttentionTracker tracker = new WintertodtAttentionTracker();
-        WintertodtSnapshot s = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).warmth(80).points(600).build();
+        WintertodtSnapshot s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).warmth(80).points(600).build();
         assertNull(tracker.notification(s, feed, rewards(), 100));
         tracker.reset();
         assertNull(tracker.notification(s, feed, rewards(), 101));
@@ -118,7 +118,7 @@ public class WintertodtAttentionTrackerTest
     @Test public void unknownPointReadingPreservesObservedCrossingAndRewardIsOptIn()
     {
         WintertodtAttentionTracker tracker = new WintertodtAttentionTracker();
-        WintertodtSnapshot s = WintertodtSnapshot.builder().roundState(RoundState.ACTIVE).warmth(80).points(490).build();
+        WintertodtSnapshot s = WintertodtSnapshot.builder().inventoryKnown(true).equipmentKnown(true).roundState(RoundState.ACTIVE).warmth(80).points(490).build();
         tracker.notification(s, feed, rewards(), 100);
         assertNull(tracker.notification(s.toBuilder().points(-1).build(), feed, rewards(), 101));
         assertNotNull(tracker.notification(s.toBuilder().points(500).build(), feed, rewards(), 102));

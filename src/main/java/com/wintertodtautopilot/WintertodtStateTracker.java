@@ -20,10 +20,13 @@ public class WintertodtStateTracker
     @Inject private WintertodtNpcTracker npcs;
     @Inject private WintertodtRoundTracker rounds;
     private final WintertodtCornerTracker corners = new WintertodtCornerTracker();
+    private final WintertodtActionTracker actions = new WintertodtActionTracker();
     private PlayerActivity activity = PlayerActivity.IDLE;
     private int lastActionTick = -100;
     private int interruptedAt = -100;
     private boolean interrupted;
+    private int warmthRequestedAt = -1;
+    private int warmthRequestedItem = -1;
     private WorldPoint clickedCorner;
     private Boolean canMixPotion;
     private WintertodtSnapshot previous = WintertodtSnapshot.builder().build();
@@ -55,9 +58,11 @@ public class WintertodtStateTracker
         boolean boundary = partial.active() != previous.active();
         if (boundary)
         {
+            actions.reset();
             activity = PlayerActivity.IDLE;
             interrupted = false;
             lastActionTick = tick;
+            warmthRequestedAt = -1;
         }
         if (boundary) { corners.reset(); }
         b.observationTick(tick).corners(corners.observe(tick, objects, npcs, partial.active() ? client : null));
@@ -69,8 +74,16 @@ public class WintertodtStateTracker
         boolean moving = previous.getPlayerLocation() != null && !location.equals(previous.getPlayerLocation());
         PlayerActivity animation = WintertodtConstants.activity(player.getAnimation());
         if (tick - interruptedAt > 1 && animation != PlayerActivity.IDLE) { setActivity(animation); }
+        boolean consumedRequestedItem = warmthRequestedAt >= 0 && inventory.quantityDecreased(warmthRequestedItem);
         boolean bagChanged = inventory.changed();
-        if (!boundary && partial.active())
+        if (activity == PlayerActivity.RESTORING_WARMTH) { activity = PlayerActivity.IDLE; }
+        WintertodtSnapshot.WarmthAction warmthAction = WintertodtSnapshot.WarmthAction.NONE;
+        if (warmthRequestedAt >= 0)
+        {
+            warmthAction = tick >= warmthRequestedAt && tick - warmthRequestedAt <= 1
+                ? WintertodtSnapshot.WarmthAction.REQUESTED : WintertodtSnapshot.WarmthAction.UNCONFIRMED;
+        }
+        if (!boundary && partial.active() && partial.isInventoryKnown() && previous.isInventoryKnown())
         {
             if (partial.getBrumaRoots() > previous.getBrumaRoots()) { setActivity(PlayerActivity.CHOPPING); }
             else if (partial.getBrumaKindling() > previous.getBrumaKindling()
@@ -80,7 +93,17 @@ public class WintertodtStateTracker
             { setActivity(PlayerActivity.FEEDING); }
             if (partial.getRejuvenationDoses() > previous.getRejuvenationDoses()
                 && partial.getUnfinishedPotionCount() < previous.getUnfinishedPotionCount()) { setActivity(PlayerActivity.MAKING_POTION); }
-            if (warmth > previous.getWarmth() + 10 && bagChanged) { setActivity(PlayerActivity.RESTORING_WARMTH); }
+            boolean consumed = partial.getRejuvenationDoses() < previous.getRejuvenationDoses()
+                || consumedRequestedItem;
+            // Inventory change alone also covers healing a pyro or obtaining a root.
+            // Only a consumption signal together with a real warmth rise confirms restoration.
+            if (warmthAction == WintertodtSnapshot.WarmthAction.REQUESTED
+                && previous.getWarmth() >= 0 && warmth > previous.getWarmth() && consumed && bagChanged)
+            {
+                setActivity(PlayerActivity.RESTORING_WARMTH);
+                warmthAction = WintertodtSnapshot.WarmthAction.CONFIRMED;
+                warmthRequestedAt = -1;
+            }
         }
         if (moving) { lastActionTick = tick; }
         if (activity == PlayerActivity.FLETCHING && partial.getBrumaRoots() == 0
@@ -91,10 +114,26 @@ public class WintertodtStateTracker
         }
         Actor interaction = player.getInteracting();
         boolean idle = !moving && activity == PlayerActivity.IDLE && interaction == null && tick - lastActionTick >= 5;
-        b.currentActivity(moving ? PlayerActivity.MOVING : activity).playerIdle(idle).interrupted(interrupted)
+        b.warmthAction(warmthAction).currentActivity(moving ? PlayerActivity.MOVING : activity).playerIdle(idle).interrupted(interrupted)
             .inactiveTicks(Math.max(0, tick - lastActionTick))
             .interaction(interaction == null || interaction.getName() == null ? "None" : interaction.getName());
-        previous = b.build();
+        WintertodtSnapshot observed = actions.observe(previous, b.build(), animation);
+        if (observed.getActionActivity() == PlayerActivity.HEALING && observed.getActionCorner() != WorkingCorner.AUTOMATIC
+            && observed.isInventoryKnown() && previous.isInventoryKnown()
+            && observed.getRejuvenationDoses() < previous.getRejuvenationDoses())
+        {
+            WorkingCorner healed = observed.getActionCorner();
+            corners.invalidateHealth(healed);
+            java.util.List<CornerObservation> updated = new java.util.ArrayList<>();
+            for (CornerObservation c : observed.getCorners())
+            {
+                updated.add(c.getCorner() != healed ? c : new CornerObservation(c.getCorner(), c.getBrazierState(),
+                    c.getPyromancerState(), -1, c.getBrazierSource(), c.getPyromancerSource(), c.getBrazierObservedTick(),
+                    c.getPyromancerObservedTick(), c.isBrazierVisible(), c.isPyromancerVisible(), -1));
+            }
+            observed = observed.toBuilder().clearCorners().corners(updated).build();
+        }
+        previous = observed;
         return previous;
     }
     public void animation(Actor actor)
@@ -124,8 +163,25 @@ public class WintertodtStateTracker
                 clickedCorner = WorldPoint.fromScene(client.getTopLevelWorldView(), event.getParam0(), event.getParam1(), client.getTopLevelWorldView().getPlane());
             }
         }
-        if (option.equals("eat") || option.equals("drink") && target.contains("rejuvenation")) { setActivity(PlayerActivity.RESTORING_WARMTH); }
-        else if (target.contains("pyromancer") && (option.equals("help") || option.equals("use"))) { setActivity(PlayerActivity.HEALING); }
+        if (option.equals("eat") || option.equals("drink") && target.contains("rejuvenation"))
+        { warmthRequestedAt = client.getTickCount(); warmthRequestedItem = event.getItemId(); }
+        else { warmthRequestedAt = -1; }
+        PlayerActivity requested = PlayerActivity.IDLE;
+        WorkingCorner destination = clickedCorner == null ? WorkingCorner.AUTOMATIC : WorkingCorner.nearest(clickedCorner);
+        if (option.equals("eat") || option.equals("drink") && target.contains("rejuvenation")) { requested = PlayerActivity.RESTORING_WARMTH; }
+        else if (target.contains("pyromancer") && (option.equals("help") || option.equals("use")))
+        { requested = PlayerActivity.HEALING; destination = npcs.cornerForIndex(event.getId()); }
+        else if (target.contains("brazier"))
+        {
+            if (option.equals("light")) { requested = PlayerActivity.LIGHTING; }
+            else if (option.equals("fix") || option.equals("repair")) { requested = PlayerActivity.REPAIRING; }
+            else if (option.equals("feed") || option.equals("use")) { requested = PlayerActivity.FEEDING; }
+        }
+        else if (target.contains("bruma root") && option.contains("chop")) { requested = PlayerActivity.CHOPPING; }
+        else if (target.contains("bruma root") && option.equals("use")) { requested = PlayerActivity.FLETCHING; }
+        else if (target.contains("brew'ma") || option.equals("use") && (target.contains("bruma herb") || target.contains("unfinished rejuvenation")))
+        { requested = PlayerActivity.MAKING_POTION; }
+        actions.request(requested, destination, previous, client.getTickCount());
     }
     public void chat(ChatMessage event)
     {
@@ -153,7 +209,9 @@ public class WintertodtStateTracker
     {
         activity = PlayerActivity.IDLE; lastActionTick = -100; interruptedAt = -100;
         interrupted = false; clickedCorner = null; canMixPotion = null;
+        warmthRequestedAt = -1;
+        warmthRequestedItem = -1;
         previous = WintertodtSnapshot.builder().build();
-        inventory.reset(); rounds.reset(); objects.resetCorner(); corners.reset();
+        actions.reset(); inventory.reset(); rounds.reset(); objects.resetCorner(); corners.reset();
     }
 }

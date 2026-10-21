@@ -1,24 +1,28 @@
 # Plugin Hub release checks
 
-Release: **0.2.5 — Stable batches, potion trips and healing cues**, prepared 18 October 2026.
+Release: **0.3.0 — Solo mode is ready**, prepared 21 October 2026.
 
 ## What changed
 
-- Solo gathering survives local maintenance, optional healing, remote-brazier feeding and noncritical rapid-drain advice. Feeding completes the current fuel batch after the first inventory slot opens. Critical rapid drain, warmth safety and intentional finishing can still interrupt.
-- Mass chopping survives brief idle animation gaps before returning for maintenance.
-- New routine Solo restocks wait until carried fuel is fed when more than one dose remains. A usable partial reserve is accepted when enabling mid-round. Started restock trips still finish their target.
-- Healing highlights only the pyromancer. Inventory potion borders now mean drinking for personal warmth; thin borders and fading pulses are unchanged.
-- Full warmth cannot request restoration or a low-warmth alert. Obsolete drink instructions clear between game ticks once warmth recovers.
-- No new in-game release notice. The existing 0.2.1 notice and saved marker are unchanged.
+Solo no longer carries the preview label. Comfortable keeps task changes down and finishes with one selected brazier. Active Points adds fresh injury-healing opportunities; Active finishing uses an adjacent pair when run energy is known and above 10%. Existing strategy, goal, fletching and corner choices carry over.
 
-## Validation
+- Keep opening, recovery, finishing and unfinished fuel batches coherent through loading and temporary connection loss. Missing or regressed observations hold for reassessment.
+- Collect feasible potion batches before mixing, reuse partial reserves across rounds, and keep fuel-first restock deferral. Confirmed consumption can increase the working allowance without lowering the initial 24-dose baseline.
+- Show supply readiness and separate requested, in-progress, confirmed and interrupted actions. Stale health-bar readings cannot keep producing optional healing instructions.
+- Keep pyromancer outlines attached during pending healing and valid optional approaches. Use one eligibility rule for maintenance, healing and making potion space during recovery.
+- Improve route ordering and useful intermediate brazier stops while retaining collision checks and manual northern-gap jumps.
+- Update the listing description and relevant tags for Mass/Solo, potions, kindling and pyromancers. Add one short 0.3.0 chat notice using the existing saved-marker key.
 
-`./gradlew clean build previewOverlay --no-daemon --console=plain` passed: 221 tests, no failures, errors or skips. The synthetic overlay preview was inspected. Release packaging checks cover legal resources, Java 11 classes, icon limits, README local links and `git diff --check`.
+The player still performs every interaction. There are no automatic clicks, dodges or world hops. No new runtime dependencies are introduced. The icon and packaged legal notices remain unchanged.
 
-The synthetic preview does not establish live gameplay validation. Outstanding checks remain in [LIVE_VALIDATION.md](LIVE_VALIDATION.md).
+## Validation and release scope
+
+The maintainer reports successful manual plugin testing and requested this release. The complete [live scenario matrix](LIVE_VALIDATION.md) remains a follow-up record; automated tests do not mark those boxes complete. The newest healing-outline correction still needs its in-game retest.
+
+Local verification uses `./gradlew clean build previewOverlay --no-daemon --console=plain`, command-line capture replay, packaged license/notices, Java 11 class checks, icon limits, documentation links and `git diff --check`. Results for this release are recorded in [Phase 3 progress](PHASE_3_PROGRESS.md).
+
+Hazard avoidance, optional round-duration finishing, the explicit work-value refactor and comparative XP/points-rate claims are outside this release. Supply horizons are bounded engineering choices, not a promise that a reserve lasts a full round.
 
 ## Submission
 
-The previous [0.2.4 submission](https://github.com/runelite/plugin-hub/pull/18829) is merged. Submit 0.2.5 as a new Plugin Hub PR after publishing the source commit. Change only `plugins/wintertodt-autopilot` and use the full source hash. Hub CI, maintainer merge and distribution are separate from local validation.
-
-The player performs every gameplay interaction. No new runtime dependencies or resources are introduced. The existing icon and legal notices are unchanged.
+The [0.2.5 submission](https://github.com/runelite/plugin-hub/pull/18894) is merged. Publish the 0.3.0 source commit, then submit a new Plugin Hub update changing only `plugins/wintertodt-autopilot` to its full public hash. Source CI, Hub CI, maintainer review/merge and distribution remain separate steps. Never describe an open update PR as already available in RuneLite.

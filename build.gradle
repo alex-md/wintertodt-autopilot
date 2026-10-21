@@ -1,6 +1,6 @@
 plugins { id 'java' }
 group = 'com.wintertodtautopilot'
-version = '0.2.5'
+version = '0.3.0'
 repositories {
     mavenLocal()
     maven { url = 'https://repo.runelite.net'; content { includeGroupByRegex('net\\.runelite.*') } }
@@ -31,4 +31,12 @@ tasks.register('previewOverlay', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'com.wintertodtautopilot.WintertodtOverlayPreview'
     jvmArgs '-Djava.awt.headless=true'
+}
+
+tasks.register('replaySolo', JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.wintertodtautopilot.WintertodtSoloReplay'
+    if (providers.gradleProperty('traceFile').isPresent()) {
+        args providers.gradleProperty('traceFile').get()
+    }
 }

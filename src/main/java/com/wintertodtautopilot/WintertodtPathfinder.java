@@ -75,10 +75,7 @@ public final class WintertodtPathfinder
                     // A jump takes roughly two ticks: prefer walking when it is already shorter.
                     // Pillars may block normal walking. Only the two banks need walkable tiles;
                     // intermediate pillars are reached and left exclusively through these jumps.
-                    if (!inside(nx, ny, width, height) || (flags[nx][ny] & UNLOADED) != 0
-                        || (flags[x][y] & UNLOADED) != 0
-                        || (j == 0 || j == shortcut.size() - 1) && (flags[nx][ny] & BLOCKED) != 0
-                        || (i == 0 || i == shortcut.size() - 1) && (flags[x][y] & BLOCKED) != 0) { continue; }
+                    if (!canJump(flags, shortcut, i, j)) { continue; }
                     int next = (nx * height + ny) * HEADINGS + NO_HEADING;
                     relax(queue, parents, costs, turns, current, next, 4, 0);
                 }
@@ -94,6 +91,96 @@ public final class WintertodtPathfinder
         if (nextCost > costs[next] || nextCost == costs[next] && nextTurns >= turns[next]) { return; }
         parents[next] = current; costs[next] = nextCost; turns[next] = nextTurns;
         queue.add(new int[]{next, nextCost, nextTurns});
+    }
+    /** One distance search for all candidate braziers. Rendering still uses the fewer-turn search above. */
+    static java.util.Map<WorkingCorner, CostedPath> findBraziers(int[][] flags, Point start,
+        java.util.Map<WorkingCorner, java.awt.Rectangle> targets, List<Point> shortcut)
+    {
+        java.util.Map<WorkingCorner, CostedPath> found = new java.util.EnumMap<>(WorkingCorner.class);
+        if (flags == null || flags.length == 0 || flags[0] == null || flags[0].length == 0) { return found; }
+        int width = flags.length, height = flags[0].length;
+        for (int[] row : flags) { if (row == null || row.length != height) { return found; } }
+        if (!inside(start.getX(), start.getY(), width, height)) { return found; }
+        java.util.Map<WorkingCorner, java.awt.Rectangle> valid = new java.util.EnumMap<>(WorkingCorner.class);
+        for (java.util.Map.Entry<WorkingCorner, java.awt.Rectangle> e : targets.entrySet())
+        {
+            java.awt.Rectangle r = e.getValue();
+            if (r != null && r.width > 0 && r.height > 0 && inside(r.x, r.y, width, height)
+                && inside(r.x + r.width - 1, r.y + r.height - 1, width, height)) { valid.put(e.getKey(), r); }
+        }
+        targets = valid;
+        if (targets.isEmpty()) { return found; }
+        int[] costs = new int[width * height], parents = new int[costs.length];
+        Arrays.fill(costs, Integer.MAX_VALUE); Arrays.fill(parents, -1);
+        int origin = start.getX() * height + start.getY(); costs[origin] = 0; parents[origin] = origin;
+        PriorityQueue<int[]> queue = new PriorityQueue<>(Comparator.<int[]>comparingInt(a -> a[1]).thenComparingInt(a -> a[0]));
+        queue.add(new int[]{origin, 0});
+        while (!queue.isEmpty())
+        {
+            int[] entry = queue.remove(); int tile = entry[0], cost = entry[1], x = tile / height, y = tile % height;
+            if (cost != costs[tile]) { continue; }
+            for (java.util.Map.Entry<WorkingCorner, java.awt.Rectangle> target : targets.entrySet())
+            {
+                java.awt.Rectangle r = target.getValue();
+                if (!found.containsKey(target.getKey()) && goal(x, y, r.x, r.y, r.x + r.width - 1, r.y + r.height - 1, true))
+                {
+                    List<Point> path = new ArrayList<>();
+                    for (int node = tile; node != origin; node = parents[node]) { path.add(new Point(node / height, node % height)); }
+                    path.add(start); Collections.reverse(path);
+                    found.put(target.getKey(), new CostedPath(cost, Collections.unmodifiableList(path)));
+                }
+            }
+            if (found.size() == targets.size()) { break; }
+            for (int i = 0; i < DX.length; i++)
+            {
+                int nx = x + DX[i], ny = y + DY[i];
+                if (canStep(flags, x, y, nx, ny)) { relaxTile(queue, parents, costs, tile, nx * height + ny, cost + 1); }
+            }
+            for (int i = 0; i < shortcut.size(); i++)
+            {
+                Point from = shortcut.get(i);
+                if (from.getX() != x || from.getY() != y) { continue; }
+                for (int j : new int[]{i - 1, i + 1})
+                {
+                    if (!canJump(flags, shortcut, i, j)) { continue; }
+                    Point to = shortcut.get(j);
+                    relaxTile(queue, parents, costs, tile, to.getX() * height + to.getY(), cost + 4);
+                }
+            }
+        }
+        for (WorkingCorner c : targets.keySet()) { found.putIfAbsent(c, new CostedPath(-1, Collections.emptyList())); }
+        return found;
+    }
+    @lombok.Value static class CostedPath { int cost; List<Point> path; }
+    /** At most one collision-checked walking step off the intended path to an interaction tile. */
+    static boolean passesBrazier(int[][] flags, List<Point> path, java.awt.Rectangle r)
+    {
+        for (Point p : path)
+        {
+            int x = p.getX(), y = p.getY();
+            if (goal(x, y, r.x, r.y, r.x + r.width - 1, r.y + r.height - 1, true)) { return true; }
+            for (int i = 0; i < DX.length; i++)
+            {
+                int nx = x + DX[i], ny = y + DY[i];
+                if (canStep(flags, x, y, nx, ny) && goal(nx, ny, r.x, r.y, r.x + r.width - 1, r.y + r.height - 1, true)) { return true; }
+            }
+        }
+        return false;
+    }
+    private static void relaxTile(PriorityQueue<int[]> queue, int[] parents, int[] costs, int from, int to, int cost)
+    {
+        if (cost >= costs[to]) { return; }
+        costs[to] = cost; parents[to] = from; queue.add(new int[]{to, cost});
+    }
+    private static boolean canJump(int[][] flags, List<Point> shortcut, int i, int j)
+    {
+        if (j < 0 || j >= shortcut.size()) { return false; }
+        Point from = shortcut.get(i), to = shortcut.get(j);
+        int x = from.getX(), y = from.getY(), nx = to.getX(), ny = to.getY();
+        return inside(x, y, flags.length, flags[0].length) && inside(nx, ny, flags.length, flags[0].length)
+            && (flags[nx][ny] & UNLOADED) == 0 && (flags[x][y] & UNLOADED) == 0
+            && (j != 0 && j != shortcut.size() - 1 || (flags[nx][ny] & BLOCKED) == 0)
+            && (i != 0 && i != shortcut.size() - 1 || (flags[x][y] & BLOCKED) == 0);
     }
     private static boolean goal(int x, int y, int minX, int minY, int maxX, int maxY, boolean adjacent)
     {

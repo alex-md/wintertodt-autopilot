@@ -46,9 +46,21 @@ public class WintertodtUpdateNoticeTest
         Client client = mock(Client.class);
         ConfigManager manager = mock(ConfigManager.class);
         when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
-        when(manager.getConfiguration("wintertodtautopilot", WintertodtAutopilotPlugin.UPDATE_NOTICE_KEY)).thenReturn("0.2.0");
+        when(manager.getConfiguration("wintertodtautopilot", WintertodtAutopilotPlugin.UPDATE_NOTICE_KEY)).thenReturn("0.2.1");
         plugin(client, manager).onGameTick(new GameTick());
         verify(client).addChatMessage(ChatMessageType.GAMEMESSAGE, "", WintertodtAutopilotPlugin.UPDATE_NOTICE, null);
+    }
+
+    @Test public void savedCurrentReleaseMarkerDoesNotRepeatTheNotice() throws Exception
+    {
+        Client client = mock(Client.class);
+        ConfigManager manager = mock(ConfigManager.class);
+        when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
+        when(manager.getConfiguration("wintertodtautopilot", WintertodtAutopilotPlugin.UPDATE_NOTICE_KEY))
+            .thenReturn("0.3.0");
+        plugin(client, manager).onGameTick(new GameTick());
+        verify(client, never()).addChatMessage(any(), anyString(), anyString(), any());
+        verify(manager, never()).setConfiguration(anyString(), anyString(), any());
     }
 
     private WintertodtAutopilotPlugin plugin(Client client, ConfigManager manager) throws Exception
